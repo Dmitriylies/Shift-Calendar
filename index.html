@@ -890,6 +890,26 @@
             await initApp();
         }
 
+        function renderTabs() {
+            const container = document.getElementById('tabsContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            Object.keys(appData).forEach(name => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
+                tab.innerText = name;
+                tab.title = name;
+
+                tab.onclick = () => {
+                    switchCalendar(name);
+                };
+
+                container.appendChild(tab);
+            });
+        }
+
         // ============================
         // Календари
         // ============================
