@@ -492,7 +492,7 @@
             cursor: default;
         }
         .day-cell span {
-            z-index: 2;
+            z-index: 1;
             color: var(--text-main);
             letter-spacing: -0.02em;
         }
@@ -504,7 +504,8 @@
             position: absolute;
             inset: 0;
             opacity: 0.5;
-            z-index: 1;
+            z-index: 2;
+            pointer-events: none;
         }
 
         .star-overlay {
@@ -512,7 +513,7 @@
             inset: 0;
             background-color: #ff9500;
             opacity: 0.85;
-            z-index: 1;
+            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -683,6 +684,13 @@
         // ============================
         let isLoggingOut = false;
 
+        // После OAuth очищаем служебные параметры из адресной строки,
+        // чтобы повторный вход не использовал старый callback URL.
+        if (window.location.search || window.location.hash) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+
         async function checkUserSession() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
 
@@ -721,7 +729,10 @@
                 const { error } = await supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: window.location.origin + window.location.pathname
+                        redirectTo: window.location.origin + window.location.pathname,
+                        queryParams: {
+                            prompt: 'select_account'
+                        }
                     }
                 });
 
