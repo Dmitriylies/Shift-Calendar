@@ -3,487 +3,732 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Year Calendar</title>
-    <!-- Подключаем Supabase JS SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Minimal Overlay Year Calendar</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-            --hover-color: #475569;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-secondary: #86868b;
+            --border-color: #d2d2d7;
+            --accent: #007aff;
+            --radius: 10px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--text-main);
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
             flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            background: var(--card-bg);
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            height: 100vh;
+            overflow: hidden;
             box-sizing: border-box;
         }
 
         header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 16px;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
+            padding: 8px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 10;
+            flex-shrink: 0;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .auth-section {
+        .header-row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .left-controls, .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .year-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-right: 4px;
+        }
+        .year-nav button {
+            padding: 2px 6px;
+            font-size: 13px;
+        }
+
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            max-width: 450px;
+            padding-bottom: 2px;
+        }
+
+        .tab {
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 400;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: rgba(0, 0, 0, 0.04);
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.1s;
+        }
+        .tab:hover {
+            background: rgba(0, 0, 0, 0.07);
+            color: var(--text-main);
+        }
+        .tab.active {
+            background: #ffffff;
+            color: var(--text-main);
+            font-weight: 500;
+            border-color: var(--border-color);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+
+        .tab-add-btn {
+            font-family: inherit;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .tab-add-btn:hover {
+            background: rgba(0,0,0,0.03);
+            color: var(--text-main);
+            border-color: var(--text-secondary);
+        }
+
+        input[type="text"] {
+            font-family: inherit;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            color: var(--text-main);
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: var(--accent);
         }
 
         button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button.secondary {
-            background-color: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-        }
-
-        button.secondary:hover {
-            background-color: var(--border-color);
-        }
-
-        /* Таблица календаря */
-        .calendar-scroll {
-            overflow-x: auto;
-            margin-bottom: 24px;
-        }
-
-        table.calendar {
-            border-collapse: collapse;
-            width: 100%;
-            text-align: center;
-            font-size: 12px;
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 4px;
-            min-width: 24px;
-            height: 24px;
-        }
-
-        th {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
             font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        button:hover {
+            background: #f2f2f7;
+        }
+        button:active {
+            transform: scale(0.97);
         }
 
-        td.day-cell {
+        .palette-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 11px;
+        }
+
+        .palette {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .color-btn {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid transparent;
             cursor: pointer;
             transition: transform 0.1s;
-        }
-
-        td.day-cell:hover {
-            transform: scale(1.15);
-            z-index: 10;
-            position: relative;
-            box-shadow: 0 0 8px rgba(0,0,0,0.5);
-        }
-
-        td.empty {
-            background-color: rgba(0,0,0,0.1);
-            cursor: default;
-        }
-
-        /* Легенда и счетчики */
-        .legend-container {
             display: flex;
-            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            box-sizing: border-box;
+        }
+        .color-btn:hover { transform: scale(1.1); }
+        .color-btn.selected { border-color: var(--text-main); }
+        
+        .color-add-btn {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .color-add-btn:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 10px;
             flex-wrap: wrap;
             align-items: center;
-            background: rgba(0,0,0,0.2);
-            padding: 16px;
-            border-radius: 12px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            cursor: pointer;
+            gap: 4px;
         }
 
-        .color-box {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
+        .legend-item input {
+            width: 70px;
+            padding: 2px 4px;
+            font-size: 10.5px;
         }
 
         .counter-badge {
-            font-size: 13px;
-            color: var(--text-muted);
-            background: rgba(255,255,255,0.05);
-            padding: 4px 8px;
-            border-radius: 6px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-left: 2px;
+            font-weight: 500;
+        }
+        .counter-badge.limit-reached {
+            color: #ff3b30;
+            font-weight: 600;
         }
 
-        /* Мобильное окно авторизации */
-        #auth-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        .calendar-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px 16px;
         }
 
-        .modal-content {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 16px;
-            width: 100%;
-            max-width: 400px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            border: 1px solid var(--border-color);
-        }
-
-        .modal-content input {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-color);
-            color: var(--text-color);
-        }
-
-        .modal-tabs {
-            display: flex;
+        .year-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            margin-bottom: 10px;
+            max-width: 1250px;
+            margin: 0 auto;
         }
 
-        .modal-tab {
-            flex: 1;
+        @media (max-width: 1100px) {
+            .year-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 800px) {
+            .year-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 500px) {
+            .year-grid { grid-template-columns: 1fr; }
+        }
+
+        .month-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 6px 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .month-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 3px;
+            color: var(--text-main);
+        }
+
+        .weekdays-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 8.5px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1.5px;
+        }
+
+        .day-cell {
+            height: 27px;
+            background: #fafafc;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 400;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        .day-cell.empty {
             background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
+            cursor: default;
+        }
+        .day-cell span {
+            z-index: 2;
+            color: var(--text-main);
+        }
+        .day-cell:hover:not(.empty) {
+            background: #f0f0f2;
         }
 
-        .modal-tab.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+        .overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0.45;
+            z-index: 1;
+        }
+
+        .star-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: rgba(255, 204, 0, 0.75);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <h1>⭐ Годовой календарь</h1>
-                <span id="year-label" style="color: var(--text-muted); font-size: 18px;">2026</span>
+    <header>
+        <div class="header-row">
+            <div class="left-controls">
+                <div class="year-nav">
+                    <button onclick="changeYear(-1)">‹</button>
+                    <span id="currentYearTitle">2027</span>
+                    <button onclick="changeYear(1)">›</button>
+                </div>
+                <div class="tabs-container" id="tabsContainer"></div>
+                <button class="tab-add-btn" onclick="createNewCalendar()" title="Новый календарь">+</button>
             </div>
-            <div class="auth-section" id="auth-container">
-                <span id="user-email" style="font-size: 14px; color: var(--text-muted);"></span>
-                <button id="login-btn" onclick="openAuthModal()">Войти</button>
-                <button id="logout-btn" class="secondary" style="display:none;" onclick="handleLogout()">Выйти</button>
+            <div class="right-controls">
+                <button onclick="exportData()">Экспорт</button>
+                <button onclick="importDataClick()">Импорт</button>
+                <input type="file" id="importFile" style="display: none;" onchange="importData(event)">
             </div>
-        </header>
-
-        <div class="calendar-scroll">
-            <table class="calendar" id="calendar-table">
-                <!-- Генерируется скриптом -->
-            </table>
         </div>
 
-        <div class="legend-container" id="legend-container">
-            <!-- Легенда и счетчики генерируются скриптом -->
+        <div class="palette-section">
+            <div class="palette" id="colorPalette"></div>
+            <div class="legend-items" id="legendContainer"></div>
         </div>
-    </div>
+    </header>
 
-    <!-- Модальное окно входа / регистрации -->
-    <div id="auth-modal">
-        <div class="modal-content">
-            <h3 id="modal-title" style="margin:0;">Авторизация</h3>
-            <div class="modal-tabs">
-                <button class="modal-tab active" id="tab-signin" onclick="switchAuthTab('signin')">Вход</button>
-                <button class="modal-tab" id="tab-signup" onclick="switchAuthTab('signup')">Регистрация</button>
-            </div>
-            
-            <button onclick="loginWithGoogle()" style="background: #db4437; margin-bottom: 10px;">Войти через Google</button>
-            <div style="text-align: center; color: var(--text-muted); font-size: 12px;">или по Email</div>
-
-            <input type="email" id="email-input" placeholder="Email">
-            <input type="password" id="password-input" placeholder="Пароль">
-            
-            <button id="email-auth-btn" onclick="handleEmailAuth()">Войти</button>
-            <button class="secondary" onclick="closeAuthModal()">Закрыть</button>
-        </div>
+    <div class="calendar-container">
+        <div class="year-grid" id="yearGrid"></div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://gnczstcivximbigwtyrt.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_GXqipg1rfDcdZ9jRH8U_qg_WF-iLk5e';
-        
-        const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentYear = 2027;
+        const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-        const currentYear = 2026;
-        let currentUser = null;
-        let isSignUpMode = false;
+        const GREEN_COLOR = '#34c759';
+        const GREEN_LIMIT = 22;
 
-        // Данные календаря (выбранные цвета для дней и тексты легенды)
-        let calendarData = {}; 
-        let legendData = {
-            1: { color: '#ef4444', label: 'Важно' },
-            2: { color: '#f59e0b', label: 'Прогресс' },
-            3: { color: '#10b981', label: 'Отлично (Зеленые дни)' },
-            4: { color: '#3b82f6', label: 'Планы' },
-            5: { color: '#8b5cf6', label: 'Другое' }
+        // Eraser button removed from palette (toggle handles erasure)
+        let defaultColors = [GREEN_COLOR, '#007aff', '#8e8e93', 'star'];
+        let defaultLegends = {
+            [GREEN_COLOR]: 'Зеленый',
+            '#007aff': 'Синий',
+            '#8e8e93': 'Серый',
+            'star': 'Важное'
         };
-        let activeColor = 3; // По умолчанию выбран зеленый
 
-        const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-
-        async function init() {
-            renderCalendarSkeleton();
-            renderLegend();
-
-            // Проверка сессии
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                updateAuthUI();
-                await loadCloudData();
+        let appData = JSON.parse(localStorage.getItem('apple_overlay_calendars_v4')) || {
+            "Основной": {
+                colors: [...defaultColors],
+                legends: { ...defaultLegends },
+                days: {}
             }
+        };
 
-            _supabase.auth.onAuthStateChange(async (event, session) => {
-                currentUser = session?.user || null;
-                updateAuthUI();
-                if (currentUser) {
-                    await loadCloudData();
-                }
+        let currentCalName = Object.keys(appData)[0];
+        let currentColor = appData[currentCalName].colors[0] || GREEN_COLOR;
+
+        // Clean legacy eraser tool if present in stored colors
+        Object.keys(appData).forEach(name => {
+            const cal = appData[name];
+            cal.colors = cal.colors.filter(c => c !== '');
+        });
+
+        function initApp() {
+            document.getElementById('currentYearTitle').innerText = currentYear;
+            renderTabs();
+            renderPalette();
+            renderLegend();
+            renderYear();
+        }
+
+        function changeYear(delta) {
+            currentYear += delta;
+            initApp();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabsContainer');
+            container.innerHTML = '';
+            Object.keys(appData).forEach(name => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
+                tab.innerText = name;
+                tab.onclick = () => switchCalendar(name);
+                container.appendChild(tab);
             });
         }
 
-        // Рендер сетки календаря
-        function renderCalendarSkeleton() {
-            const table = document.getElementById('calendar-table');
-            let html = '<thead><tr><th>Месяц</th>';
-            for (let d = 1; d <= 31; d++) html += `<th>${d}</th>`;
-            html += '</tr></thead><tbody>';
-
-            for (let m = 0; m < 12; m++) {
-                html += `<tr><td>${months[m]}</td>`;
-                const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
-                for (let d = 1; d <= 31; d++) {
-                    if (d <= daysInMonth) {
-                        const dateStr = `${currentYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                        html += `<td class="day-cell" id="day-${dateStr}" onclick="handleDayClick('${dateStr}')" title="${dateStr}"></td>`;
-                    } else {
-                        html += `<td class="empty"></td>`;
-                    }
-                }
-                html += '</tr>';
+        function switchCalendar(name) {
+            currentCalName = name;
+            const currentCal = appData[currentCalName];
+            if (!currentCal.colors.includes(currentColor)) {
+                currentColor = currentCal.colors[0] || GREEN_COLOR;
             }
-            html += '</tbody>';
-            table.innerHTML = html;
-        }
-
-        // Рендер легенды и счетчиков
-        function renderLegend() {
-            const container = document.getElementById('legend-container');
-            let html = '';
-
-            // Подсчет статистики по цветам
-            const counts = {};
-            Object.values(calendarData).forEach(colorId => {
-                counts[colorId] = (counts[colorId] || 0) + 1;
-            });
-
-            for (const [id, item] of Object.entries(legendData)) {
-                const isSelected = activeColor == id;
-                const count = counts[id] || 0;
-                html += `
-                    <div class="legend-item" style="border: ${isSelected ? '2px solid white' : '1px solid transparent'}; padding: 4px 8px; border-radius: 8px;" onclick="setActiveColor(${id})">
-                        <div class="color-box" style="background-color: ${item.color};"></div>
-                        <span>${item.label}</span>
-                        <span class="counter-badge">${count}</span>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
-        }
-
-        function setActiveColor(id) {
-            activeColor = id;
+            renderTabs();
+            renderPalette();
             renderLegend();
+            renderYear();
         }
 
-        function handleDayClick(dateStr) {
-            if (calendarData[dateStr] === activeColor) {
-                delete calendarData[dateStr]; // Снять выбор при повторном клике
-            } else {
-                calendarData[dateStr] = activeColor;
-            }
-            updateCalendarDisplay();
-            renderLegend();
-            saveDataDebounced();
-        }
-
-        function updateCalendarDisplay() {
-            // Очистка всех ячеек
-            for (let m = 0; m < 12; m++) {
-                const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const dateStr = `${currentYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                    const cell = document.getElementById(`day-${dateStr}`);
-                    if (cell) {
-                        const colorId = calendarData[dateStr];
-                        cell.style.backgroundColor = colorId ? legendData[colorId].color : 'transparent';
-                    }
-                }
-            }
-        }
-
-        // Синхронизация с Supabase
-        let saveTimeout = null;
-        function saveDataDebounced() {
-            if (!currentUser) return;
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(async () => {
-                await _supabase.from('calendars').upsert({
-                    user_id: currentUser.id,
-                    year: currentYear,
-                    data: calendarData
-                }, { onConflict: 'user_id,year' });
-            }, 500);
-        }
-
-        async function loadCloudData() {
-            const { data, error } = await _supabase
-                .from('calendars')
-                .select('data')
-                .eq('user_id', currentUser.id)
-                .eq('year', currentYear)
-                .single();
-
-            if (data && data.data) {
-                calendarData = data.data;
-                updateCalendarDisplay();
-                renderLegend();
-            }
-        }
-
-        // Управление модалкой и авторизацией
-        function openAuthModal() {
-            document.getElementById('auth-modal').style.display = 'flex';
-        }
-
-        function closeAuthModal() {
-            document.getElementById('auth-modal').style.display = 'none';
-        }
-
-        function switchAuthTab(mode) {
-            isSignUpMode = (mode === 'signup');
-            document.getElementById('tab-signin').classList.toggle('active', !isSignUpMode);
-            document.getElementById('tab-signup').classList.toggle('active', isSignUpMode);
-            document.getElementById('modal-title').innerText = isSignUpMode ? 'Регистрация' : 'Авторизация';
-            document.getElementById('email-auth-btn').innerText = isSignUpMode ? 'Зарегистрироваться' : 'Войти';
-        }
-
-        async function loginWithGoogle() {
-            const { error } = await _supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.href.split('?')[0]
-                }
-            });
-            if (error) alert(error.message);
-        }
-
-        async function handleEmailAuth() {
-            const email = document.getElementById('email-input').value;
-            const password = document.getElementById('password-input').value;
-
-            if (!email || !password) {
-                alert('Введите email и пароль');
+        function createNewCalendar() {
+            const name = prompt("Введите название нового календаря:");
+            if (!name || name.trim() === "") return;
+            if (appData[name]) {
+                alert("Календарь с таким именем уже существует!");
                 return;
             }
+            appData[name] = {
+                colors: [...defaultColors],
+                legends: { ...defaultLegends },
+                days: {}
+            };
+            currentCalName = name;
+            currentColor = GREEN_COLOR;
+            saveAndRefresh();
+        }
 
-            if (isSignUpMode) {
-                const { error } = await _supabase.auth.signUp({ email, password });
-                if (error) alert(error.message);
-                else {
-                    alert('Регистрация успешна! Проверьте почту для подтверждения или попробуйте войти.');
-                    closeAuthModal();
+        function addNewColor() {
+            const colorInput = prompt("Введите HEX-код цвета (например, #ffcc00 или #ff3b30):", "#ff9500");
+            if (!colorInput) return;
+            const hex = colorInput.trim();
+            const currentCal = appData[currentCalName];
+            
+            if (!currentCal.colors.includes(hex)) {
+                const starIdx = currentCal.colors.indexOf('star');
+                if (starIdx !== -1) {
+                    currentCal.colors.splice(starIdx, 0, hex);
+                } else {
+                    currentCal.colors.push(hex);
                 }
-            } else {
-                const { error } = await _supabase.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
-                else closeAuthModal();
+                currentCal.legends[hex] = '';
+                currentColor = hex;
+                saveAndRefresh();
             }
         }
 
-        async function handleLogout() {
-            await _supabase.auth.signOut();
-            calendarData = {};
-            updateCalendarDisplay();
-            renderLegend();
+        function selectColor(color, element) {
+            currentColor = color;
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('selected'));
+            element.classList.add('selected');
         }
 
-        function updateAuthUI() {
-            if (currentUser) {
-                document.getElementById('user-email').innerText = currentUser.email;
-                document.getElementById('login-btn').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'inline-block';
-            } else {
-                document.getElementById('user-email').innerText = '';
-                document.getElementById('login-btn').style.display = 'inline-block';
-                document.getElementById('logout-btn').style.display = 'none';
+        function getGreenCount(currentCal) {
+            let count = 0;
+            for (let dateKey in currentCal.days) {
+                if (currentCal.days[dateKey] === GREEN_COLOR) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function renderPalette() {
+            const paletteContainer = document.getElementById('colorPalette');
+            paletteContainer.innerHTML = '';
+            const currentCal = appData[currentCalName];
+
+            currentCal.colors.forEach(col => {
+                if (col === '') return;
+
+                const btn = document.createElement('div');
+                btn.className = `color-btn ${currentColor === col ? 'selected' : ''}`;
+
+                if (col === 'star') {
+                    btn.style.backgroundColor = '#fff8e1';
+                    btn.style.border = '1px solid #ffcc00';
+                    btn.title = 'Золотая звездочка';
+                    btn.innerHTML = '★';
+                    btn.style.color = '#d4af37';
+                } else {
+                    btn.style.backgroundColor = col;
+                    btn.title = col;
+                }
+
+                btn.onclick = () => selectColor(col, btn);
+                paletteContainer.appendChild(btn);
+            });
+
+            const addBtn = document.createElement('div');
+            addBtn.className = 'color-add-btn';
+            addBtn.innerHTML = '+';
+            addBtn.title = 'Добавить новый цвет';
+            addBtn.onclick = addNewColor;
+            paletteContainer.appendChild(addBtn);
+        }
+
+        function renderLegend() {
+            const container = document.getElementById('legendContainer');
+            container.innerHTML = '';
+            const currentCal = appData[currentCalName];
+            const greenCount = getGreenCount(currentCal);
+
+            currentCal.colors.forEach(col => {
+                if (col === '') return;
+
+                const div = document.createElement('div');
+                div.className = 'legend-item';
+
+                const dot = document.createElement('div');
+                dot.style.width = '7px';
+                dot.style.height = '7px';
+                dot.style.borderRadius = '50%';
+                dot.style.border = '1px solid rgba(0,0,0,0.1)';
+
+                if (col === 'star') {
+                    dot.style.backgroundColor = '#ffcc00';
+                } else {
+                    dot.style.backgroundColor = col;
+                }
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Метка...';
+                input.value = currentCal.legends[col] || '';
+                input.oninput = (e) => {
+                    currentCal.legends[col] = e.target.value;
+                    saveData();
+                };
+
+                div.appendChild(dot);
+                div.appendChild(input);
+
+                if (col === GREEN_COLOR) {
+                    const counterBadge = document.createElement('span');
+                    counterBadge.className = `counter-badge ${greenCount >= GREEN_LIMIT ? 'limit-reached' : ''}`;
+                    counterBadge.id = 'greenCounterBadge';
+                    counterBadge.innerText = `(${greenCount}/${GREEN_LIMIT})`;
+                    div.appendChild(counterBadge);
+                }
+
+                container.appendChild(div);
+            });
+        }
+
+        function renderYear() {
+            const yearGrid = document.getElementById('yearGrid');
+            yearGrid.innerHTML = '';
+            const currentCal = appData[currentCalName];
+
+            for (let m = 0; m < 12; m++) {
+                const card = document.createElement('div');
+                card.className = 'month-card';
+
+                const title = document.createElement('div');
+                title.className = 'month-title';
+                title.innerText = monthsNames[m];
+                card.appendChild(title);
+
+                const wkHeader = document.createElement('div');
+                wkHeader.className = 'weekdays-header';
+                weekdays.forEach(wd => {
+                    const d = document.createElement('div');
+                    d.innerText = wd;
+                    wkHeader.appendChild(d);
+                });
+                card.appendChild(wkHeader);
+
+                const monthGrid = document.createElement('div');
+                monthGrid.className = 'month-grid';
+
+                let firstDayIndex = new Date(currentYear, m, 1).getDay();
+                firstDayIndex = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
+                
+                const totalDays = new Date(currentYear, m + 1, 0).getDate();
+
+                for (let i = 0; i < firstDayIndex; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.className = 'day-cell empty';
+                    monthGrid.appendChild(emptyCell);
+                }
+
+                for (let day = 1; day <= totalDays; day++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell';
+
+                    const span = document.createElement('span');
+                    span.innerText = day;
+                    cell.appendChild(span);
+
+                    const monthStr = String(m + 1).padStart(2, '0');
+                    const dayStr = String(day).padStart(2, '0');
+                    const dateKey = `${currentYear}-${monthStr}-${dayStr}`;
+
+                    updateCellVisuals(cell, currentCal.days[dateKey]);
+
+                    cell.onclick = () => handleCellClick(dateKey, cell, currentCal);
+
+                    monthGrid.appendChild(cell);
+                }
+
+                card.appendChild(monthGrid);
+                yearGrid.appendChild(card);
             }
         }
 
-        init();
+        function handleCellClick(dateKey, cell, currentCal) {
+            const existingValue = currentCal.days[dateKey];
+
+            // TOGGLE logic: If current cell already has the selected color/tool, clicking it again removes it
+            if (existingValue === currentColor) {
+                delete currentCal.days[dateKey];
+            } else {
+                // Check limit for green color placement
+                if (currentColor === GREEN_COLOR) {
+                    const currentGreenCount = getGreenCount(currentCal);
+                    if (currentGreenCount >= GREEN_LIMIT) {
+                        alert(`Достигнут лимит использования зеленого цвета (${GREEN_LIMIT} раз)!`);
+                        return;
+                    }
+                }
+                currentCal.days[dateKey] = currentColor;
+            }
+
+            updateCellVisuals(cell, currentCal.days[dateKey]);
+            saveData();
+            updateGreenCounterUI();
+        }
+
+        function updateCellVisuals(cell, value) {
+            const oldOverlay = cell.querySelector('.overlay');
+            const oldStar = cell.querySelector('.star-overlay');
+            if (oldOverlay) oldOverlay.remove();
+            if (oldStar) oldStar.remove();
+
+            if (!value) return;
+
+            if (value === 'star') {
+                const star = document.createElement('div');
+                star.className = 'star-overlay';
+                star.innerHTML = '★';
+                cell.appendChild(star);
+            } else {
+                const overlay = document.createElement('div');
+                overlay.className = 'overlay';
+                overlay.style.backgroundColor = value;
+                cell.appendChild(overlay);
+            }
+        }
+
+        function updateGreenCounterUI() {
+            const currentCal = appData[currentCalName];
+            const greenCount = getGreenCount(currentCal);
+            const badge = document.getElementById('greenCounterBadge');
+            if (badge) {
+                badge.innerText = `(${greenCount}/${GREEN_LIMIT})`;
+                if (greenCount >= GREEN_LIMIT) {
+                    badge.classList.add('limit-reached');
+                } else {
+                    badge.classList.remove('limit-reached');
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('apple_overlay_calendars_v4', JSON.stringify(appData));
+        }
+
+        function saveAndRefresh() {
+            saveData();
+            initApp();
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "calendars_backup.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importDataClick() {
+            document.getElementById('importFile').click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    appData = imported;
+                    currentCalName = Object.keys(appData)[0];
+                    saveAndRefresh();
+                    alert("Данные успешно импортированы!");
+                } catch (err) {
+                    alert("Ошибка при чтении файла JSON.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        initApp();
     </script>
 </body>
 </html>
+minimal_overlay_year_calendar_with_green_limit.html
