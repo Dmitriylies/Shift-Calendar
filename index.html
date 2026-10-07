@@ -4,434 +4,486 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Year Calendar</title>
+    <!-- Подключаем Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #f5f5f7;
-            --card-bg: #ffffff;
-            --text-main: #1d1d1f;
-            --text-secondary: #86868b;
-            --border-color: #d2d2d7;
-            --accent: #007aff;
-            --radius: 10px;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --hover-color: #475569;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-main);
+            color: var(--text-color);
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             box-sizing: border-box;
         }
 
-        #authScreen {
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .auth-section {
             display: flex;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            width: 100vw;
-            background: var(--bg-color);
+            gap: 12px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        button.secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        /* Таблица календаря */
+        .calendar-scroll {
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+
+        table.calendar {
+            border-collapse: collapse;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            min-width: 24px;
+            height: 24px;
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        td.day-cell {
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        td.day-cell:hover {
+            transform: scale(1.15);
+            z-index: 10;
+            position: relative;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+        }
+
+        td.empty {
+            background-color: rgba(0,0,0,0.1);
+            cursor: default;
+        }
+
+        /* Легенда и счетчики */
+        .legend-container {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .counter-badge {
+            font-size: 13px;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        /* Мобильное окно авторизации */
+        #auth-modal {
+            display: none;
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
             z-index: 1000;
         }
-        .auth-card {
+
+        .modal-content {
             background: var(--card-bg);
             padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            width: 300px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             gap: 16px;
             border: 1px solid var(--border-color);
-            align-items: center;
-            text-align: center;
         }
-        .auth-card h2 {
-            margin: 0;
-            font-size: 20px;
-        }
-        .google-btn {
-            width: 100%;
-            background: #ffffff;
-            color: #1d1d1f;
-            border: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+
+        .modal-content input {
             padding: 10px;
             border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .google-btn:hover { background: #f2f2f7; }
-
-        header {
-            background-color: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border-color);
-            padding: 8px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            z-index: 10;
-            flex-shrink: 0;
-        }
-        .header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .left-controls, .right-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .year-nav {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .tabs-container {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            overflow-x: auto;
-            max-width: 400px;
-        }
-        .tab {
-            font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            border: 1px solid transparent;
-            background: rgba(0, 0, 0, 0.04);
-            color: var(--text-secondary);
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .tab.active {
-            background: #ffffff;
-            color: var(--text-main);
-            font-weight: 500;
-            border-color: var(--border-color);
-        }
-        button {
-            font-family: inherit;
-            font-size: 11px;
-            font-weight: 500;
-            padding: 4px 8px;
-            border-radius: 6px;
             border: 1px solid var(--border-color);
-            background: #ffffff;
-            color: var(--text-main);
-            cursor: pointer;
+            background: var(--bg-color);
+            color: var(--text-color);
         }
-        button:hover { background: #f2f2f7; }
 
-        .palette-section {
+        .modal-tabs {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            font-size: 11px;
-        }
-        .palette { display: flex; align-items: center; gap: 5px; }
-        .color-btn {
-            width: 18px; height: 18px; border-radius: 50%;
-            border: 2px solid transparent; cursor: pointer;
-        }
-        .color-btn.selected { border-color: var(--text-main); }
-        .legend-items { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .legend-item { display: flex; align-items: center; gap: 4px; }
-        .legend-item input { width: 70px; padding: 2px 4px; font-size: 10.5px; border: 1px solid var(--border-color); border-radius: 4px;}
-
-        .calendar-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px 16px;
-        }
-        .year-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            max-width: 1250px;
-            margin: 0 auto;
+            margin-bottom: 10px;
         }
-        @media (max-width: 1100px) { .year-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 800px) { .year-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 500px) { .year-grid { grid-template-columns: 1fr; } }
 
-        .month-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 6px 8px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.03);
+        .modal-tab {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
         }
-        .month-title { font-size: 11px; font-weight: 600; text-align: center; margin-bottom: 3px; }
-        .weekdays-header {
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            text-align: center; font-size: 8.5px; color: var(--text-secondary); margin-bottom: 2px;
+
+        .modal-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
-        .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.5px; }
-        .day-cell {
-            height: 27px; background: #fafafc; border-radius: 2px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 11px; cursor: pointer; position: relative; user-select: none;
-        }
-        .day-cell.empty { background: transparent; cursor: default; }
-        .day-cell.today { border: 1.5px solid var(--accent); font-weight: 600; }
-        .overlay { position: absolute; inset: 0; opacity: 0.45; z-index: 1; }
-        .day-cell span { z-index: 2; }
     </style>
 </head>
 <body>
 
-    <!-- Экран входа только через Google -->
-    <div id="authScreen">
-        <div class="auth-card">
-            <h2>Вход в календарь</h2>
-            <button class="google-btn" onclick="loginWithGoogle()">
-                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.17 21.32 7.23 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.6H1.18C.43 8.13 0 9.87 0 11.7s.43 3.57 1.18 5.1l4.09-2.56z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.23 0 3.17 2.68 1.18 6.6l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
-                Войти через Google
-            </button>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h1>⭐ Годовой календарь</h1>
+                <span id="year-label" style="color: var(--text-muted); font-size: 18px;">2026</span>
+            </div>
+            <div class="auth-section" id="auth-container">
+                <span id="user-email" style="font-size: 14px; color: var(--text-muted);"></span>
+                <button id="login-btn" onclick="openAuthModal()">Войти</button>
+                <button id="logout-btn" class="secondary" style="display:none;" onclick="handleLogout()">Выйти</button>
+            </div>
+        </header>
+
+        <div class="calendar-scroll">
+            <table class="calendar" id="calendar-table">
+                <!-- Генерируется скриптом -->
+            </table>
+        </div>
+
+        <div class="legend-container" id="legend-container">
+            <!-- Легенда и счетчики генерируются скриптом -->
         </div>
     </div>
 
-    <!-- Основной интерфейс -->
-    <header>
-        <div class="header-row">
-            <div class="left-controls">
-                <div class="year-nav">
-                    <button onclick="changeYear(-1)">‹</button>
-                    <span id="currentYearTitle">2027</span>
-                    <button onclick="changeYear(1)">›</button>
-                </div>
-                <div class="tabs-container" id="tabsContainer"></div>
-                <button onclick="createNewCalendar()">+</button>
+    <!-- Модальное окно входа / регистрации -->
+    <div id="auth-modal">
+        <div class="modal-content">
+            <h3 id="modal-title" style="margin:0;">Авторизация</h3>
+            <div class="modal-tabs">
+                <button class="modal-tab active" id="tab-signin" onclick="switchAuthTab('signin')">Вход</button>
+                <button class="modal-tab" id="tab-signup" onclick="switchAuthTab('signup')">Регистрация</button>
             </div>
-            <div class="right-controls">
-                <span id="userEmailDisplay" style="font-size: 11px; color: var(--text-secondary);"></span>
-                <button onclick="logout()">Выйти</button>
-            </div>
-        </div>
-        <div class="palette-section">
-            <div class="palette" id="colorPalette"></div>
-            <div class="legend-items" id="legendContainer"></div>
-        </div>
-    </header>
+            
+            <button onclick="loginWithGoogle()" style="background: #db4437; margin-bottom: 10px;">Войти через Google</button>
+            <div style="text-align: center; color: var(--text-muted); font-size: 12px;">или по Email</div>
 
-    <div class="calendar-container">
-        <div class="year-grid" id="yearGrid"></div>
+            <input type="email" id="email-input" placeholder="Email">
+            <input type="password" id="password-input" placeholder="Пароль">
+            
+            <button id="email-auth-btn" onclick="handleEmailAuth()">Войти</button>
+            <button class="secondary" onclick="closeAuthModal()">Закрыть</button>
+        </div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://gnczstcivximbigwtyrt.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_GXqipg1rfDcdZ9jRH8U_qg_WF-iLk5e';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        const currentYear = 2026;
         let currentUser = null;
-        let currentYear = new Date().getFullYear();
-        let appData = {};
-        let currentCalName = '';
-        let currentColor = '#34c759';
+        let isSignUpMode = false;
 
-        const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-        const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-        const defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
-        const defaultLegends = { '#34c759': 'Зеленый', '#007aff': 'Синий', '#8e8e93': 'Серый', 'star': 'Важное' };
+        // Данные календаря (выбранные цвета для дней и тексты легенды)
+        let calendarData = {}; 
+        let legendData = {
+            1: { color: '#ef4444', label: 'Важно' },
+            2: { color: '#f59e0b', label: 'Прогресс' },
+            3: { color: '#10b981', label: 'Отлично (Зеленые дни)' },
+            4: { color: '#3b82f6', label: 'Планы' },
+            5: { color: '#8b5cf6', label: 'Другое' }
+        };
+        let activeColor = 3; // По умолчанию выбран зеленый
 
-        async function checkUserSession() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+        const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+        async function init() {
+            renderCalendarSkeleton();
+            renderLegend();
+
+            // Проверка сессии
+            const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
                 currentUser = session.user;
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('userEmailDisplay').innerText = currentUser.email;
-                initApp();
+                updateAuthUI();
+                await loadCloudData();
+            }
+
+            _supabase.auth.onAuthStateChange(async (event, session) => {
+                currentUser = session?.user || null;
+                updateAuthUI();
+                if (currentUser) {
+                    await loadCloudData();
+                }
+            });
+        }
+
+        // Рендер сетки календаря
+        function renderCalendarSkeleton() {
+            const table = document.getElementById('calendar-table');
+            let html = '<thead><tr><th>Месяц</th>';
+            for (let d = 1; d <= 31; d++) html += `<th>${d}</th>`;
+            html += '</tr></thead><tbody>';
+
+            for (let m = 0; m < 12; m++) {
+                html += `<tr><td>${months[m]}</td>`;
+                const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+                for (let d = 1; d <= 31; d++) {
+                    if (d <= daysInMonth) {
+                        const dateStr = `${currentYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                        html += `<td class="day-cell" id="day-${dateStr}" onclick="handleDayClick('${dateStr}')" title="${dateStr}"></td>`;
+                    } else {
+                        html += `<td class="empty"></td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        // Рендер легенды и счетчиков
+        function renderLegend() {
+            const container = document.getElementById('legend-container');
+            let html = '';
+
+            // Подсчет статистики по цветам
+            const counts = {};
+            Object.values(calendarData).forEach(colorId => {
+                counts[colorId] = (counts[colorId] || 0) + 1;
+            });
+
+            for (const [id, item] of Object.entries(legendData)) {
+                const isSelected = activeColor == id;
+                const count = counts[id] || 0;
+                html += `
+                    <div class="legend-item" style="border: ${isSelected ? '2px solid white' : '1px solid transparent'}; padding: 4px 8px; border-radius: 8px;" onclick="setActiveColor(${id})">
+                        <div class="color-box" style="background-color: ${item.color};"></div>
+                        <span>${item.label}</span>
+                        <span class="counter-badge">${count}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function setActiveColor(id) {
+            activeColor = id;
+            renderLegend();
+        }
+
+        function handleDayClick(dateStr) {
+            if (calendarData[dateStr] === activeColor) {
+                delete calendarData[dateStr]; // Снять выбор при повторном клике
             } else {
-                document.getElementById('authScreen').style.display = 'flex';
+                calendarData[dateStr] = activeColor;
+            }
+            updateCalendarDisplay();
+            renderLegend();
+            saveDataDebounced();
+        }
+
+        function updateCalendarDisplay() {
+            // Очистка всех ячеек
+            for (let m = 0; m < 12; m++) {
+                const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const cell = document.getElementById(`day-${dateStr}`);
+                    if (cell) {
+                        const colorId = calendarData[dateStr];
+                        cell.style.backgroundColor = colorId ? legendData[colorId].color : 'transparent';
+                    }
+                }
             }
         }
 
+        // Синхронизация с Supabase
+        let saveTimeout = null;
+        function saveDataDebounced() {
+            if (!currentUser) return;
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                await _supabase.from('calendars').upsert({
+                    user_id: currentUser.id,
+                    year: currentYear,
+                    data: calendarData
+                }, { onConflict: 'user_id,year' });
+            }, 500);
+        }
+
+        async function loadCloudData() {
+            const { data, error } = await _supabase
+                .from('calendars')
+                .select('data')
+                .eq('user_id', currentUser.id)
+                .eq('year', currentYear)
+                .single();
+
+            if (data && data.data) {
+                calendarData = data.data;
+                updateCalendarDisplay();
+                renderLegend();
+            }
+        }
+
+        // Управление модалкой и авторизацией
+        function openAuthModal() {
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').style.display = 'none';
+        }
+
+        function switchAuthTab(mode) {
+            isSignUpMode = (mode === 'signup');
+            document.getElementById('tab-signin').classList.toggle('active', !isSignUpMode);
+            document.getElementById('tab-signup').classList.toggle('active', isSignUpMode);
+            document.getElementById('modal-title').innerText = isSignUpMode ? 'Регистрация' : 'Авторизация';
+            document.getElementById('email-auth-btn').innerText = isSignUpMode ? 'Зарегистрироваться' : 'Войти';
+        }
+
         async function loginWithGoogle() {
-            const { error } = await supabaseClient.auth.signInWithOAuth({
+            const { error } = await _supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.href }
+                options: {
+                    redirectTo: window.location.href.split('?')[0]
+                }
             });
             if (error) alert(error.message);
         }
 
-        async function logout() {
-            await supabaseClient.auth.signOut();
-            location.reload();
-        }
+        async function handleEmailAuth() {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
 
-        async function initApp() {
-            document.getElementById('currentYearTitle').innerText = currentYear;
-            const { data, error } = await supabaseClient.from('calendars').select('*');
-
-            if (error) { console.error(error); return; }
-
-            if (!data || data.length === 0) {
-                const defaultCal = { name: 'Основной', colors: [...defaultColors], legends: { ...defaultLegends }, days: {} };
-                await supabaseClient.from('calendars').insert([defaultCal]);
-                appData['Основной'] = { colors: defaultCal.colors, legends: defaultCal.legends, days: defaultCal.days };
-            } else {
-                appData = {};
-                data.forEach(row => {
-                    appData[row.name] = { colors: row.colors, legends: row.legends, days: row.days };
-                });
+            if (!email || !password) {
+                alert('Введите email и пароль');
+                return;
             }
 
-            if (!currentCalName || !appData[currentCalName]) {
-                currentCalName = Object.keys(appData)[0];
-            }
-            renderTabs();
-            renderPalette();
-            renderLegend();
-            renderYear();
-        }
-
-        function changeYear(delta) {
-            currentYear += delta;
-            document.getElementById('currentYearTitle').innerText = currentYear;
-            renderYear();
-        }
-
-        function renderTabs() {
-            const container = document.getElementById('tabsContainer');
-            container.innerHTML = '';
-            Object.keys(appData).forEach(name => {
-                const tab = document.createElement('div');
-                tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
-                tab.innerText = name;
-                tab.onclick = () => { currentCalName = name; renderTabs(); renderPalette(); renderLegend(); renderYear(); };
-                container.appendChild(tab);
-            });
-        }
-
-        async function createNewCalendar() {
-            const name = prompt("Название нового календаря:");
-            if (!name || appData[name]) return;
-            const newCal = { name, colors: [...defaultColors], legends: { ...defaultLegends }, days: {} };
-            await supabaseClient.from('calendars').insert([newCal]);
-            appData[name] = newCal;
-            currentCalName = name;
-            renderTabs(); renderPalette(); renderLegend(); renderYear();
-        }
-
-        function renderPalette() {
-            const paletteContainer = document.getElementById('colorPalette');
-            paletteContainer.innerHTML = '';
-            appData[currentCalName].colors.forEach(col => {
-                const btn = document.createElement('div');
-                btn.className = `color-btn ${currentColor === col ? 'selected' : ''}`;
-                btn.style.backgroundColor = col === 'star' ? '#ffcc00' : col;
-                if (col === 'star') btn.innerHTML = '★';
-                btn.onclick = () => { currentColor = col; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
-                paletteContainer.appendChild(btn);
-            });
-        }
-
-        function renderLegend() {
-            const container = document.getElementById('legendContainer');
-            container.innerHTML = '';
-            const cal = appData[currentCalName];
-            cal.colors.forEach(col => {
-                const div = document.createElement('div');
-                div.className = 'legend-item';
-                const input = document.createElement('input');
-                input.value = cal.legends[col] || '';
-                input.oninput = (e) => { cal.legends[col] = e.target.value; saveDataDebounced(); };
-                div.appendChild(input);
-                container.appendChild(div);
-            });
-        }
-
-        function renderYear() {
-            const yearGrid = document.getElementById('yearGrid');
-            yearGrid.innerHTML = '';
-            const cal = appData[currentCalName];
-            const today = new Date();
-
-            for (let m = 0; m < 12; m++) {
-                const card = document.createElement('div');
-                card.className = 'month-card';
-                card.innerHTML = `<div class="month-title">${monthsNames[m]}</div>`;
-                const wkHeader = document.createElement('div');
-                wkHeader.className = 'weekdays-header';
-                weekdays.forEach(wd => wkHeader.innerHTML += `<div>${wd}</div>`);
-                card.appendChild(wkHeader);
-
-                const monthGrid = document.createElement('div');
-                monthGrid.className = 'month-grid';
-                let firstDay = new Date(currentYear, m, 1).getDay();
-                firstDay = (firstDay === 0) ? 6 : firstDay - 1;
-                let totalDays = new Date(currentYear, m + 1, 0).getDate();
-
-                for (let i = 0; i < firstDay; i++) monthGrid.innerHTML += `<div class="day-cell empty"></div>`;
-
-                for (let day = 1; day <= totalDays; day++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'day-cell';
-                    if (currentYear === today.getFullYear() && m === today.getMonth() && day === today.getDate()) cell.classList.add('today');
-                    cell.innerHTML = `<span>${day}</span>`;
-
-                    const dateKey = `${currentYear}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    if (cal.days[dateKey]) updateCellVisuals(cell, cal.days[dateKey]);
-
-                    cell.onclick = async () => {
-                        if (cal.days[dateKey] === currentColor) delete cal.days[dateKey];
-                        else cal.days[dateKey] = currentColor;
-                        updateCellVisuals(cell, cal.days[dateKey]);
-                        await saveData();
-                    };
-                    monthGrid.appendChild(cell);
+            if (isSignUpMode) {
+                const { error } = await _supabase.auth.signUp({ email, password });
+                if (error) alert(error.message);
+                else {
+                    alert('Регистрация успешна! Проверьте почту для подтверждения или попробуйте войти.');
+                    closeAuthModal();
                 }
-                card.appendChild(monthGrid);
-                yearGrid.appendChild(card);
+            } else {
+                const { error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) alert(error.message);
+                else closeAuthModal();
             }
         }
 
-        function updateCellVisuals(cell, val) {
-            const old = cell.querySelector('.overlay');
-            if (old) old.remove();
-            if (val) {
-                const ov = document.createElement('div');
-                ov.className = 'overlay';
-                ov.style.backgroundColor = val === 'star' ? '#ffcc00' : val;
-                cell.appendChild(ov);
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            calendarData = {};
+            updateCalendarDisplay();
+            renderLegend();
+        }
+
+        function updateAuthUI() {
+            if (currentUser) {
+                document.getElementById('user-email').innerText = currentUser.email;
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('user-email').innerText = '';
+                document.getElementById('login-btn').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'none';
             }
         }
 
-        async function saveData() {
-            const cal = appData[currentCalName];
-            await supabaseClient.from('calendars').update({
-                colors: cal.colors, legends: cal.legends, days: cal.days, updated_at: new Date()
-            }).eq('name', currentCalName);
-        }
-
-        let timeout;
-        function saveDataDebounced() {
-            clearTimeout(timeout);
-            timeout = setTimeout(saveData, 500);
-        }
-
-        checkUserSession();
+        init();
     </script>
 </body>
 </html>
