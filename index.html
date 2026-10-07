@@ -640,85 +640,18 @@
 
         const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-        // Фиксированный набор из 8 пастельных цветов + отдельная ⭐ «Важное».
-        const defaultColors = [
-            '#A8D5BA', // зеленый
-            '#D1D5DB', // серый
-            '#A9D6E5', // голубой
-            '#F4B6B6', // красный
-            '#F6E7A8', // желтый
-            '#C9B7E8', // лавандовый
-            '#F7C6A3', // персиковый
-            '#F3B6D2', // розовый
-            'star'
-        ];
+        const defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
 
         const defaultLegends = {
-            '#A8D5BA': 'Зеленый',
-            '#D1D5DB': 'Серый',
-            '#A9D6E5': 'Голубой',
-            '#F4B6B6': 'Красный',
-            '#F6E7A8': 'Желтый',
-            '#C9B7E8': 'Лавандовый',
-            '#F7C6A3': 'Персиковый',
-            '#F3B6D2': 'Розовый',
+            '#34c759': 'Зеленый',
+            '#007aff': 'Синий',
+            '#8e8e93': 'Серый',
             'star': 'Важное'
         };
 
-        function normalizeCalendarColors(calendar) {
-            const oldColors = Array.isArray(calendar.colors) ? calendar.colors : [];
-            const newRegular = defaultColors.filter(c => c !== 'star');
-            const oldRegular = oldColors.filter(c => c && c !== 'star');
-            const oldLegends = calendar.legends && typeof calendar.legends === 'object' ? calendar.legends : {};
-            const newLegends = { ...defaultLegends };
-            const colorMap = {};
-            let normalizedRegular;
-
-            // Если календарь уже использует новый набор, сохраняем пользовательский порядок.
-            if (oldRegular.every(c => newRegular.includes(c))) {
-                normalizedRegular = [...oldRegular];
-                newRegular.forEach(color => {
-                    if (!normalizedRegular.includes(color)) normalizedRegular.push(color);
-                });
-
-                normalizedRegular.forEach(color => {
-                    if (oldLegends[color]) newLegends[color] = oldLegends[color];
-                    colorMap[color] = color;
-                });
-            } else {
-                // Для старых календарей переводим старые цвета в новый фиксированный набор
-                // по их прежнему порядку, чтобы уже отмеченные дни не пропали.
-                oldRegular.forEach((oldColor, index) => {
-                    if (index < newRegular.length) {
-                        const newColor = newRegular[index];
-                        colorMap[oldColor] = newColor;
-                        if (oldLegends[oldColor]) newLegends[newColor] = oldLegends[oldColor];
-                    }
-                });
-                normalizedRegular = [...newRegular];
-            }
-
-            const oldDays = calendar.days && typeof calendar.days === 'object' ? calendar.days : {};
-            const newDays = {};
-            Object.keys(oldDays).forEach(dateKey => {
-                const value = oldDays[dateKey];
-                if (value === 'star') {
-                    newDays[dateKey] = 'star';
-                } else if (colorMap[value]) {
-                    newDays[dateKey] = colorMap[value];
-                }
-            });
-
-            return {
-                colors: [...normalizedRegular, 'star'],
-                legends: newLegends,
-                days: newDays
-            };
-        }
-
         let appData = {};
         let currentCalName = '';
-        let currentColor = defaultColors[0];
+        let currentColor = '#34c759';
         let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
         let activePopoverCol = null;
         let draggedCalendarName = null;
@@ -972,11 +905,11 @@
                 };
             } else {
                 data.forEach(row => {
-                    appData[row.name] = normalizeCalendarColors({
-                        colors: row.colors,
-                        legends: row.legends,
-                        days: row.days
-                    });
+                    appData[row.name] = {
+                        colors: Array.isArray(row.colors) ? row.colors : [...defaultColors],
+                        legends: row.legends || { ...defaultLegends },
+                        days: row.days || {}
+                    };
                 });
             }
 
@@ -1001,7 +934,7 @@
             const currentCal = appData[currentCalName];
 
             if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || defaultColors[0];
+                currentColor = currentCal.colors[0] || '#34c759';
             }
 
             renderTabs();
@@ -1243,7 +1176,7 @@
             if (currentCalName === name) {
                 currentCalName = Object.keys(appData)[0];
                 const currentCal = appData[currentCalName];
-                currentColor = currentCal.colors[0] || defaultColors[0];
+                currentColor = currentCal.colors[0] || '#34c759';
             }
 
             closeCalendarMenus();
@@ -1296,7 +1229,7 @@
             };
 
             currentCalName = name;
-            currentColor = defaultColors[0];
+            currentColor = '#34c759';
 
             closeCalendarPopover();
 
@@ -1312,7 +1245,7 @@
             const currentCal = appData[currentCalName];
 
             if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || defaultColors[0];
+                currentColor = currentCal.colors[0] || '#34c759';
             }
 
             closeAllPopovers();
@@ -1336,7 +1269,87 @@
         // ============================
         // Цвета
         // ============================
-        function closeNewColorPopover() {}
+        const MAX_CUSTOM_COLORS = 8;
+
+        function addNewColor() {
+            const currentCal = appData[currentCalName];
+            if (!currentCal) return;
+
+            // Лимит относится к обычным цветам. Звездочка считается отдельным маркером.
+            const regularColors = currentCal.colors.filter(c => c !== 'star');
+
+            if (regularColors.length >= MAX_CUSTOM_COLORS) {
+                const error = document.getElementById('newColorError');
+                if (error) {
+                    error.innerText = 'Можно добавить максимум 8 цветов.';
+                    error.style.display = 'block';
+                }
+                return;
+            }
+
+            closeCalendarPopover();
+            closeAllPopovers();
+
+            const popover = document.getElementById('newColorPopover');
+            const picker = document.getElementById('newColorPicker');
+            const preview = document.getElementById('newColorPreview');
+            const error = document.getElementById('newColorError');
+
+            if (!popover || !picker) return;
+
+            picker.value = '#ff9500';
+            if (preview) preview.style.backgroundColor = picker.value;
+            if (error) error.style.display = 'none';
+
+            popover.classList.add('active');
+            picker.focus();
+        }
+
+        async function saveNewColor() {
+            const currentCal = appData[currentCalName];
+            const picker = document.getElementById('newColorPicker');
+            const preview = document.getElementById('newColorPreview');
+            const error = document.getElementById('newColorError');
+
+            if (!currentCal || !picker) return;
+
+            const hex = picker.value.toLowerCase();
+            const regularColors = currentCal.colors.filter(c => c !== 'star');
+
+            if (regularColors.length >= MAX_CUSTOM_COLORS) {
+                if (error) {
+                    error.innerText = 'Можно добавить максимум 8 цветов.';
+                    error.style.display = 'block';
+                }
+                return;
+            }
+
+            if (currentCal.colors.map(c => c.toLowerCase()).includes(hex)) {
+                if (error) {
+                    error.innerText = 'Этот цвет уже добавлен.';
+                    error.style.display = 'block';
+                }
+                return;
+            }
+
+            const starIdx = currentCal.colors.indexOf('star');
+            if (starIdx !== -1) {
+                currentCal.colors.splice(starIdx, 0, hex);
+            } else {
+                currentCal.colors.push(hex);
+            }
+
+            currentCal.legends[hex] = 'Новый';
+            currentColor = hex;
+
+            closeNewColorPopover();
+            await saveAndRefresh();
+        }
+
+        function closeNewColorPopover() {
+            const popover = document.getElementById('newColorPopover');
+            if (popover) popover.classList.remove('active');
+        }
 
         function getColorCount(currentCal, col) {
             let count = 0;
@@ -1445,7 +1458,7 @@
                             }
                         }
 
-                        currentColor = currentCal.colors[0] || defaultColors[0];
+                        currentColor = currentCal.colors[0] || '#34c759';
 
                         closeAllPopovers();
                         await saveAndRefresh();
@@ -1511,6 +1524,59 @@
                 });
 
                 paletteContainer.appendChild(wrapper);
+            });
+
+            const addWrapper = document.createElement('div');
+            addWrapper.className = 'color-wrapper';
+
+            const addBtn = document.createElement('div');
+            addBtn.className = 'color-add-btn';
+            addBtn.innerHTML = '+';
+            addBtn.title = 'Добавить новый цвет';
+
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                const popover = document.getElementById('newColorPopover');
+                const isActive = popover && popover.classList.contains('active');
+                closeNewColorPopover();
+                if (!isActive) addNewColor();
+            };
+
+            addWrapper.appendChild(addBtn);
+
+            const newColorPopover = document.createElement('div');
+            newColorPopover.id = 'newColorPopover';
+            newColorPopover.className = 'new-color-popover';
+            newColorPopover.onclick = (e) => e.stopPropagation();
+
+            newColorPopover.innerHTML = `
+                <div class="new-color-title">Новый цвет</div>
+                <div class="new-color-picker-row">
+                    <input type="color" id="newColorPicker" class="new-color-picker" value="#ff9500" aria-label="Выберите цвет">
+                    <div id="newColorPreview" class="new-color-preview" style="background:#ff9500"></div>
+                    <div class="new-color-hint">Выберите любой цвет<br>без ввода HEX-кода</div>
+                </div>
+                <div id="newColorError" class="new-color-error"></div>
+                <div class="new-color-actions">
+                    <button class="new-color-cancel" onclick="closeNewColorPopover()">Отмена</button>
+                    <button class="new-color-save" onclick="saveNewColor()">Добавить</button>
+                </div>
+            `;
+
+            addWrapper.appendChild(newColorPopover);
+            paletteContainer.appendChild(addWrapper);
+
+            const picker = newColorPopover.querySelector('#newColorPicker');
+            const preview = newColorPopover.querySelector('#newColorPreview');
+            picker.addEventListener('input', () => {
+                preview.style.backgroundColor = picker.value;
+                const error = newColorPopover.querySelector('#newColorError');
+                if (error) error.style.display = 'none';
+            });
+
+            picker.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') saveNewColor();
+                if (e.key === 'Escape') closeNewColorPopover();
             });
         }
 
