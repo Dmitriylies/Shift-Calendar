@@ -3,20 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Overlay Year Calendar</title>
+    <title>Minimal Overlay Year Calendar with Supabase</title>
+    <!-- Подключаем официальный клиент Supabase JS из CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #f5f5f7;
+            --bg-color: #fbfbfd;
             --card-bg: #ffffff;
             --text-main: #1d1d1f;
             --text-secondary: #86868b;
-            --border-color: #d2d2d7;
-            --accent: #007aff;
-            --radius: 10px;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --cell-bg: #f5f5f7;
+            --cell-hover: #ebebf0;
+            --accent: #0071e3;
+            --radius: 12px;
+            --header-bg: rgba(255, 255, 255, 0.82);
+            --popover-bg: rgba(255, 255, 255, 0.95);
+            --btn-hover: rgba(0, 0, 0, 0.04);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --card-bg: #1c1c1e;
+            --text-main: #f5f5f7;
+            --text-secondary: #98989d;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --cell-bg: #2c2c2e;
+            --cell-hover: #3a3a3c;
+            --accent: #0a84ff;
+            --header-bg: rgba(28, 28, 30, 0.82);
+            --popover-bg: rgba(44, 44, 46, 0.95);
+            --btn-hover: rgba(255, 255, 255, 0.08);
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
@@ -26,17 +49,19 @@
             height: 100vh;
             overflow: hidden;
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         header {
-            background-color: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background-color: var(--header-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
             border-bottom: 1px solid var(--border-color);
-            padding: 8px 16px;
+            padding: 10px 20px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 10px;
             z-index: 10;
             flex-shrink: 0;
         }
@@ -46,162 +71,322 @@
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
         }
 
         .left-controls, .right-controls {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .year-nav {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             font-weight: 600;
-            font-size: 16px;
-            margin-right: 4px;
+            font-size: 15px;
+            letter-spacing: -0.01em;
+            margin-right: 6px;
         }
         .year-nav button {
-            padding: 2px 6px;
+            padding: 3px 8px;
             font-size: 13px;
+            border-radius: 6px;
         }
 
         .tabs-container {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             overflow-x: auto;
-            max-width: 450px;
+            max-width: 500px;
             padding-bottom: 2px;
+            scrollbar-width: none;
+        }
+        .tabs-container::-webkit-scrollbar {
+            display: none;
         }
 
         .tab {
             font-family: inherit;
             font-size: 12px;
             font-weight: 400;
-            padding: 4px 10px;
-            border-radius: 6px;
+            padding: 5px 12px;
+            border-radius: 8px;
             border: 1px solid transparent;
-            background: rgba(0, 0, 0, 0.04);
+            background: var(--btn-hover);
             color: var(--text-secondary);
             cursor: pointer;
             white-space: nowrap;
-            transition: all 0.1s;
+            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
         }
         .tab:hover {
-            background: rgba(0, 0, 0, 0.07);
             color: var(--text-main);
+            background: var(--border-color);
         }
         .tab.active {
-            background: #ffffff;
+            background: var(--card-bg);
             color: var(--text-main);
             font-weight: 500;
             border-color: var(--border-color);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .tab-add-wrapper {
+            position: relative;
+            display: inline-block;
         }
 
         .tab-add-btn {
             font-family: inherit;
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 6px;
+            font-size: 13px;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
             border: 1px dashed var(--border-color);
             background: transparent;
             color: var(--text-secondary);
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
         .tab-add-btn:hover {
-            background: rgba(0,0,0,0.03);
+            background: var(--btn-hover);
             color: var(--text-main);
-            border-color: var(--text-secondary);
+            border-color: var(--text-main);
         }
 
-        input[type="text"] {
+        .calendar-popover {
+            display: none;
+            position: absolute;
+            top: 36px;
+            left: 0;
+            background: var(--popover-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            width: 200px;
+            box-sizing: border-box;
+            gap: 8px;
+            animation: popoverFade 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .calendar-popover.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .calendar-popover input[type="text"] {
             font-family: inherit;
             font-size: 12px;
-            padding: 4px 8px;
+            padding: 6px 8px;
             border-radius: 6px;
             border: 1px solid var(--border-color);
-            background: #ffffff;
+            background: var(--cell-bg);
             color: var(--text-main);
             outline: none;
+            width: 100%;
+            box-sizing: border-box;
         }
-        input[type="text"]:focus {
+        .calendar-popover input[type="text"]:focus {
             border-color: var(--accent);
+        }
+        .calendar-popover-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+        .popover-error {
+            font-size: 10px;
+            color: #ff453a;
+            display: none;
+            margin-top: -4px;
         }
 
         button {
             font-family: inherit;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 500;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 5px 10px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
-            background: #ffffff;
+            background: var(--card-bg);
             color: var(--text-main);
             cursor: pointer;
-            transition: all 0.1s;
+            transition: all 0.15s cubic-bezier(0.25, 1, 0.5, 1);
         }
         button:hover {
-            background: #f2f2f7;
+            background: var(--btn-hover);
         }
         button:active {
-            transform: scale(0.97);
+            transform: scale(0.96);
+        }
+
+        .theme-toggle-btn {
+            font-size: 14px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .user-profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
         }
 
         .palette-section {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            gap: 16px;
             flex-wrap: wrap;
-            font-size: 11px;
+            font-size: 12px;
+            padding-top: 2px;
         }
 
         .palette {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+        }
+
+        .color-wrapper {
+            position: relative;
         }
 
         .color-btn {
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             border: 2px solid transparent;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 11px;
             box-sizing: border-box;
         }
-        .color-btn:hover { transform: scale(1.1); }
-        .color-btn.selected { border-color: var(--text-main); }
-        
+        .color-btn:hover { transform: scale(1.12); }
+        .color-btn.selected { 
+            border-color: var(--text-main); 
+            box-shadow: 0 0 0 2px var(--bg-color), 0 2px 6px rgba(0,0,0,0.15); 
+        }
+
+        .color-popover {
+            display: none;
+            position: absolute;
+            top: 30px;
+            left: 0;
+            background: var(--popover-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            width: 180px;
+            box-sizing: border-box;
+            gap: 8px;
+            animation: popoverFade 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .color-popover.active {
+            display: flex;
+            flex-direction: column;
+        }
+        @keyframes popoverFade {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .color-popover input[type="text"] {
+            font-family: inherit;
+            font-size: 12px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--cell-bg);
+            color: var(--text-main);
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .color-popover input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .popover-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .popover-delete {
+            color: #ff453a;
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.15s;
+        }
+        .popover-delete:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+        .popover-ok {
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .popover-ok:hover {
+            opacity: 0.9;
+        }
+
         .color-add-btn {
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            border: 1px dashed var(--border-color);
+            border: 1.5px dashed var(--border-color);
             background: transparent;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-secondary);
+            transition: all 0.2s;
         }
         .color-add-btn:hover {
             border-color: var(--text-main);
             color: var(--text-main);
+            background: var(--btn-hover);
         }
 
         .legend-items {
             display: flex;
-            gap: 10px;
+            gap: 14px;
             flex-wrap: wrap;
             align-items: center;
         }
@@ -209,95 +394,106 @@
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 11.5px;
         }
 
-        .legend-item input {
-            width: 70px;
-            padding: 2px 4px;
-            font-size: 10.5px;
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+        }
+
+        .legend-name {
+            color: var(--text-main);
+            font-weight: 500;
         }
 
         .counter-badge {
-            font-size: 10px;
             color: var(--text-secondary);
-            margin-left: 2px;
-            font-weight: 500;
-        }
-        .counter-badge.limit-reached {
-            color: #ff3b30;
-            font-weight: 600;
+            font-size: 11px;
         }
 
         .calendar-container {
             flex-grow: 1;
             overflow-y: auto;
-            padding: 10px 16px;
+            padding: 16px 20px;
+        }
+        .calendar-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .calendar-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
         }
 
         .year-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            max-width: 1250px;
+            gap: 14px;
+            max-width: 1300px;
             margin: 0 auto;
         }
 
-        @media (max-width: 1100px) {
+        @media (max-width: 1150px) {
             .year-grid { grid-template-columns: repeat(3, 1fr); }
         }
-        @media (max-width: 800px) {
+        @media (max-width: 850px) {
             .year-grid { grid-template-columns: repeat(2, 1fr); }
         }
-        @media (max-width: 500px) {
+        @media (max-width: 520px) {
             .year-grid { grid-template-columns: 1fr; }
         }
 
         .month-card {
             background: var(--card-bg);
             border-radius: var(--radius);
-            padding: 6px 8px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.03);
+            padding: 10px 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            border: 1px solid var(--border-color);
         }
 
         .month-title {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             text-align: center;
-            margin-bottom: 3px;
+            margin-bottom: 6px;
             color: var(--text-main);
+            letter-spacing: -0.01em;
         }
 
         .weekdays-header {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             text-align: center;
-            font-size: 8.5px;
+            font-size: 9.5px;
             color: var(--text-secondary);
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             font-weight: 500;
         }
 
         .month-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 1.5px;
+            gap: 2.5px;
         }
 
         .day-cell {
-            height: 27px;
-            background: #fafafc;
-            border-radius: 2px;
+            height: 28px;
+            background: var(--cell-bg);
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 400;
             cursor: pointer;
             position: relative;
             overflow: hidden;
             user-select: none;
+            transition: background-color 0.1s;
         }
         .day-cell.empty {
             background: transparent;
@@ -306,33 +502,178 @@
         .day-cell span {
             z-index: 2;
             color: var(--text-main);
+            letter-spacing: -0.02em;
         }
         .day-cell:hover:not(.empty) {
-            background: #f0f0f2;
+            background: var(--cell-hover);
         }
 
         .overlay {
             position: absolute;
             inset: 0;
-            opacity: 0.45;
+            opacity: 0.5;
             z-index: 1;
         }
 
         .star-overlay {
             position: absolute;
             inset: 0;
-            z-index: 2;
+            background-color: #ff9500;
+            opacity: 0.85;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
-            color: rgba(255, 204, 0, 0.75);
-            text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            font-size: 15px;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
             pointer-events: none;
+        }
+
+        /* Модальное окно авторизации Supabase */
+        .auth-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .auth-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .auth-modal {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            width: 320px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-sizing: border-box;
+        }
+        .auth-title {
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            margin: 0;
+        }
+        .auth-btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-main);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .auth-btn-google:hover {
+            background: var(--btn-hover);
+        }
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .auth-divider::before { margin-right: 10px; }
+        .auth-divider::after { margin-left: 10px; }
+        
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .auth-input {
+            font-family: inherit;
+            font-size: 13px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--cell-bg);
+            color: var(--text-main);
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .auth-input:focus {
+            border-color: var(--accent);
+        }
+        .auth-submit-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 9px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .auth-submit-btn:hover {
+            opacity: 0.9;
+        }
+        .auth-logout-btn {
+            margin-top: 10px;
+            background: transparent;
+            color: #ff453a;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .auth-logout-btn:hover {
+            background: rgba(255, 69, 58, 0.1);
         }
     </style>
 </head>
-<body>
+<body data-theme="light">
+
+    <!-- Модальное окно авторизации -->
+    <div class="auth-modal-overlay" id="authModal">
+        <div class="auth-modal" onclick="event.stopPropagation()">
+            <h3 class="auth-title" id="authModalTitle">Вход в систему</h3>
+            
+            <div id="authLoggedOutContent">
+                <button class="auth-btn-google" onclick="loginWithGoogle()">
+                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.2v3.15C3.18 21.32 7.23 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.2C.43 8.13 0 9.88 0 12s.43 3.87 1.2 5.42l4.08-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.23 0 3.18 2.68 1.2 6.58l4.08 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+                    Войти через Google
+                </button>
+
+                <div class="auth-divider">или по ссылке (Magic Link)</div>
+
+                <div class="auth-form">
+                    <input type="email" id="emailInput" class="auth-input" placeholder="Email адрес...">
+                    <button class="auth-submit-btn" onclick="loginWithEmail()">Отправить ссылку</button>
+                </div>
+            </div>
+
+            <div id="authLoggedInContent" style="display: none;">
+                <p id="authLoggedInEmail" style="font-size: 13px; text-align: center; color: var(--text-secondary); margin: 0 0 10px 0;"></p>
+                <button class="auth-logout-btn" onclick="logout()">Выйти из аккаунта</button>
+            </div>
+        </div>
+    </div>
 
     <header>
         <div class="header-row">
@@ -343,12 +684,24 @@
                     <button onclick="changeYear(1)">›</button>
                 </div>
                 <div class="tabs-container" id="tabsContainer"></div>
-                <button class="tab-add-btn" onclick="createNewCalendar()" title="Новый календарь">+</button>
+                
+                <div class="tab-add-wrapper">
+                    <button class="tab-add-btn" onclick="toggleCalendarPopover(event)" title="Новый календарь">+</button>
+                    <div class="calendar-popover" id="calendarPopover" onclick="event.stopPropagation()">
+                        <input type="text" id="newCalNameInput" placeholder="Название..." onkeydown="handleCalendarKey(event)">
+                        <span class="popover-error" id="popoverError">Уже существует</span>
+                        <div class="calendar-popover-actions">
+                            <button class="popover-ok" onclick="submitNewCalendar()">Создать</button>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
             <div class="right-controls">
-                <button onclick="exportData()">Экспорт</button>
-                <button onclick="importDataClick()">Импорт</button>
-                <input type="file" id="importFile" style="display: none;" onchange="importData(event)">
+                <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn" title="Переключить тему">🌙</button>
+                <button class="user-profile-btn" id="userProfileBtn" onclick="openAuthModal()" title="Профиль">
+                    <span id="userProfileName">Войти</span>
+                </button>
             </div>
         </div>
 
@@ -363,41 +716,270 @@
     </div>
 
     <script>
+        // Инициализация Supabase клиента
+        const SUPABASE_URL = 'https://gnczstcivximbigwtyrt.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_GXqipg1rfDcdZ9jRH8U_qg_WF-iLk5e';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let currentYear = 2027;
         const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-        const GREEN_COLOR = '#34c759';
-        const GREEN_LIMIT = 22;
-
-        // Eraser button removed from palette (toggle handles erasure)
-        let defaultColors = [GREEN_COLOR, '#007aff', '#8e8e93', 'star'];
+        let defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
         let defaultLegends = {
-            [GREEN_COLOR]: 'Зеленый',
+            '#34c759': 'Зеленый',
             '#007aff': 'Синий',
             '#8e8e93': 'Серый',
             'star': 'Важное'
         };
 
-        let appData = JSON.parse(localStorage.getItem('apple_overlay_calendars_v4')) || {
-            "Основной": {
+        // Локальное хранилище для неавторизованного режима или кэша
+        let appData = {};
+        let currentUser = null;
+
+        let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
+        document.body.setAttribute('data-theme', currentTheme);
+        updateThemeButtonIcon();
+
+        let currentCalName = '';
+        let currentColor = '#34c759';
+        let activePopoverCol = null;
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.color-wrapper')) {
+                closeAllPopovers();
+            }
+            if (!e.target.closest('.tab-add-wrapper')) {
+                closeCalendarPopover();
+            }
+        });
+
+        // Старт приложения: проверка сессии Supabase
+        async function init() {
+            const { data: { session } } = await supabase.auth.getSession();
+            currentUser = session ? session.user : null;
+            initAuthUI();
+
+            await loadCalendarsFromSupabase();
+            initAppUI();
+        }
+
+        // Подгрузка календарей из таблицы Supabase
+        async function loadCalendarsFromSupabase() {
+            if (!currentUser) {
+                // Дефолтный локальный календарь для гостя
+                appData = {
+                    "Основной": {
+                        colors: [...defaultColors],
+                        legends: { ...defaultLegends },
+                        days: {}
+                    }
+                };
+                currentCalName = "Основной";
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('calendars')
+                .select('*');
+
+            if (error) {
+                console.error('Ошибка загрузки календарей:', error.message);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                appData = {};
+                data.forEach(row => {
+                    appData[row.name] = {
+                        id: row.id,
+                        colors: row.colors || [...defaultColors],
+                        legends: row.legends || { ...defaultLegends },
+                        days: row.days || {}
+                    };
+                });
+            } else {
+                // Если у пользователя еще нет календарей в базе, создадим дефолтный
+                appData = {
+                    "Основной": {
+                        colors: [...defaultColors],
+                        legends: { ...defaultLegends },
+                        days: {}
+                    }
+                };
+                await saveCalendarToSupabase("Основной");
+            }
+
+            if (!appData[currentCalName]) {
+                currentCalName = Object.keys(appData)[0];
+            }
+        }
+
+        // Сохранение конкретного календаря в Supabase
+        async function saveCalendarToSupabase(calName) {
+            if (!currentUser) return; // Гости сохраняют только локально в памяти
+
+            const calData = appData[calName];
+            const payload = {
+                user_id: currentUser.id,
+                name: calName,
+                colors: calData.colors,
+                legends: calData.legends,
+                days: calData.days,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabase
+                .from('calendars')
+                .upsert(payload, { onConflict: 'user_id,name' });
+
+            if (error) {
+                console.error('Ошибка сохранения в Supabase:', error.message);
+            }
+        }
+
+        // Удаление календаря из Supabase
+        async function deleteCalendarFromSupabase(calName) {
+            if (!currentUser) return;
+            await supabase
+                .from('calendars')
+                .delete()
+                .match({ user_id: currentUser.id, name: calName });
+        }
+
+        function initAuthUI() {
+            const btnText = document.getElementById('userProfileName');
+            const loggedOutDiv = document.getElementById('authLoggedOutContent');
+            const loggedInDiv = document.getElementById('authLoggedInContent');
+            const loggedInEmail = document.getElementById('authLoggedInEmail');
+
+            if (currentUser) {
+                btnText.innerText = currentUser.email.split('@')[0];
+                loggedOutDiv.style.display = 'none';
+                loggedInDiv.style.display = 'block';
+                loggedInEmail.innerText = `Вы вошли как: ${currentUser.email}`;
+            } else {
+                btnText.innerText = 'Войти';
+                loggedOutDiv.style.display = 'block';
+                loggedInDiv.style.display = 'none';
+            }
+        }
+
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        async function loginWithGoogle() {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google'
+            });
+            if (error) alert('Ошибка входа через Google: ' + error.message);
+        }
+
+        async function loginWithEmail() {
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                alert('Введите корректный email');
+                return;
+            }
+            const { error } = await supabase.auth.signInWithOtp({ email });
+            if (error) {
+                alert('Ошибка: ' + error.message);
+            } else {
+                alert('Ссылка для входа отправлена на ваш email!');
+                closeAuthModal();
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            closeAuthModal();
+            await loadCalendarsFromSupabase();
+            initAppUI();
+        }
+
+        document.getElementById('authModal').addEventListener('click', () => {
+            closeAuthModal();
+        });
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('apple_overlay_theme', currentTheme);
+            updateThemeButtonIcon();
+        }
+
+        function updateThemeButtonIcon() {
+            const btn = document.getElementById('themeToggleBtn');
+            btn.innerText = currentTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function closeAllPopovers() {
+            document.querySelectorAll('.color-popover').forEach(p => p.classList.remove('active'));
+            activePopoverCol = null;
+        }
+
+        function closeCalendarPopover() {
+            const popover = document.getElementById('calendarPopover');
+            popover.classList.remove('active');
+            document.getElementById('popoverError').style.display = 'none';
+        }
+
+        function toggleCalendarPopover(e) {
+            e.stopPropagation();
+            closeAllPopovers();
+            const popover = document.getElementById('calendarPopover');
+            const isActive = popover.classList.contains('active');
+            if (!isActive) {
+                popover.classList.add('active');
+                const input = document.getElementById('newCalNameInput');
+                input.value = '';
+                input.focus();
+            } else {
+                closeCalendarPopover();
+            }
+        }
+
+        function handleCalendarKey(e) {
+            if (e.key === 'Enter') {
+                submitNewCalendar();
+            }
+        }
+
+        async function submitNewCalendar() {
+            const input = document.getElementById('newCalNameInput');
+            const errorSpan = document.getElementById('popoverError');
+            const name = input.value.trim();
+
+            if (!name) return;
+
+            if (appData[name]) {
+                errorSpan.style.display = 'block';
+                return;
+            }
+
+            appData[name] = {
                 colors: [...defaultColors],
                 legends: { ...defaultLegends },
                 days: {}
-            }
-        };
+            };
+            currentCalName = name;
+            currentColor = '#34c759';
+            closeCalendarPopover();
 
-        let currentCalName = Object.keys(appData)[0];
-        let currentColor = appData[currentCalName].colors[0] || GREEN_COLOR;
+            await saveCalendarToSupabase(name);
+            initAppUI();
+        }
 
-        // Clean legacy eraser tool if present in stored colors
-        Object.keys(appData).forEach(name => {
-            const cal = appData[name];
-            cal.colors = cal.colors.filter(c => c !== '');
-        });
-
-        function initApp() {
+        function initAppUI() {
             document.getElementById('currentYearTitle').innerText = currentYear;
+            initAuthUI();
             renderTabs();
             renderPalette();
             renderLegend();
@@ -406,7 +988,7 @@
 
         function changeYear(delta) {
             currentYear += delta;
-            initApp();
+            initAppUI();
         }
 
         function renderTabs() {
@@ -425,33 +1007,18 @@
             currentCalName = name;
             const currentCal = appData[currentCalName];
             if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || GREEN_COLOR;
+                currentColor = currentCal.colors[0] || '#34c759';
             }
+            closeAllPopovers();
+            closeCalendarPopover();
             renderTabs();
             renderPalette();
             renderLegend();
             renderYear();
         }
 
-        function createNewCalendar() {
-            const name = prompt("Введите название нового календаря:");
-            if (!name || name.trim() === "") return;
-            if (appData[name]) {
-                alert("Календарь с таким именем уже существует!");
-                return;
-            }
-            appData[name] = {
-                colors: [...defaultColors],
-                legends: { ...defaultLegends },
-                days: {}
-            };
-            currentCalName = name;
-            currentColor = GREEN_COLOR;
-            saveAndRefresh();
-        }
-
-        function addNewColor() {
-            const colorInput = prompt("Введите HEX-код цвета (например, #ffcc00 или #ff3b30):", "#ff9500");
+        async function addNewColor() {
+            const colorInput = prompt("Введите HEX-код цвета (например, #ff9500 или #af52de):", "#ff9500");
             if (!colorInput) return;
             const hex = colorInput.trim();
             const currentCal = appData[currentCalName];
@@ -463,22 +1030,18 @@
                 } else {
                     currentCal.colors.push(hex);
                 }
-                currentCal.legends[hex] = '';
+                currentCal.legends[hex] = 'Новый';
                 currentColor = hex;
-                saveAndRefresh();
+                
+                await saveCalendarToSupabase(currentCalName);
+                initAppUI();
             }
         }
 
-        function selectColor(color, element) {
-            currentColor = color;
-            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('selected'));
-            element.classList.add('selected');
-        }
-
-        function getGreenCount(currentCal) {
+        function getColorCount(currentCal, col) {
             let count = 0;
             for (let dateKey in currentCal.days) {
-                if (currentCal.days[dateKey] === GREEN_COLOR) {
+                if (dateKey.startsWith(currentYear) && currentCal.days[dateKey] === col) {
                     count++;
                 }
             }
@@ -493,77 +1056,153 @@
             currentCal.colors.forEach(col => {
                 if (col === '') return;
 
+                const wrapper = document.createElement('div');
+                wrapper.className = 'color-wrapper';
+
                 const btn = document.createElement('div');
                 btn.className = `color-btn ${currentColor === col ? 'selected' : ''}`;
 
                 if (col === 'star') {
-                    btn.style.backgroundColor = '#fff8e1';
-                    btn.style.border = '1px solid #ffcc00';
-                    btn.title = 'Золотая звездочка';
+                    btn.style.backgroundColor = 'rgba(255, 149, 0, 0.15)';
+                    btn.style.border = '1.5px solid #ff9500';
+                    btn.title = currentCal.legends[col] || 'Звездочка';
                     btn.innerHTML = '★';
-                    btn.style.color = '#d4af37';
+                    btn.style.color = '#ff9500';
                 } else {
                     btn.style.backgroundColor = col;
-                    btn.title = col;
+                    btn.title = currentCal.legends[col] || col;
                 }
 
-                btn.onclick = () => selectColor(col, btn);
-                paletteContainer.appendChild(btn);
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (currentColor === col) {
+                        closeCalendarPopover();
+                        const popover = wrapper.querySelector('.color-popover');
+                        const isActive = popover.classList.contains('active');
+                        closeAllPopovers();
+                        if (!isActive) {
+                            popover.classList.add('active');
+                            activePopoverCol = col;
+                            const inputField = popover.querySelector('input');
+                            inputField.value = currentCal.legends[col] || '';
+                            inputField.focus();
+                        }
+                    } else {
+                        currentColor = col;
+                        closeAllPopovers();
+                        renderPalette();
+                    }
+                };
+
+                wrapper.appendChild(btn);
+
+                const popover = document.createElement('div');
+                popover.className = `color-popover ${activePopoverCol === col ? 'active' : ''}`;
+                popover.onclick = (e) => e.stopPropagation();
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentCal.legends[col] || '';
+                input.placeholder = 'Название...';
+
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        savePopoverValue(col, input.value);
+                    }
+                };
+
+                const actionsRow = document.createElement('div');
+                actionsRow.className = 'popover-actions';
+
+                if (currentCal.colors.length > 1) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'popover-delete';
+                    delBtn.innerText = 'Удалить';
+                    delBtn.onclick = async () => {
+                        if (confirm('Удалить этот цвет?')) {
+                            currentCal.colors = currentCal.colors.filter(c => c !== col);
+                            delete currentCal.legends[col];
+                            for (let dKey in currentCal.days) {
+                                if (currentCal.days[dKey] === col) delete currentCal.days[dKey];
+                            }
+                            currentColor = currentCal.colors[0];
+                            closeAllPopovers();
+                            await saveCalendarToSupabase(currentCalName);
+                            initAppUI();
+                        }
+                    };
+                    actionsRow.appendChild(delBtn);
+                } else {
+                    const emptyDiv = document.createElement('div');
+                    actionsRow.appendChild(emptyDiv);
+                }
+
+                const okBtn = document.createElement('button');
+                okBtn.className = 'popover-ok';
+                okBtn.innerText = 'OK';
+                okBtn.onclick = () => savePopoverValue(col, input.value);
+
+                actionsRow.appendChild(okBtn);
+
+                popover.appendChild(input);
+                popover.appendChild(actionsRow);
+                wrapper.appendChild(popover);
+                paletteContainer.appendChild(wrapper);
             });
 
             const addBtn = document.createElement('div');
             addBtn.className = 'color-add-btn';
             addBtn.innerHTML = '+';
             addBtn.title = 'Добавить новый цвет';
-            addBtn.onclick = addNewColor;
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeCalendarPopover();
+                addNewColor();
+            };
             paletteContainer.appendChild(addBtn);
+        }
+
+        async function savePopoverValue(col, value) {
+            const currentCal = appData[currentCalName];
+            currentCal.legends[col] = value.trim() || col;
+            await saveCalendarToSupabase(currentCalName);
+            renderLegend();
+            closeAllPopovers();
         }
 
         function renderLegend() {
             const container = document.getElementById('legendContainer');
             container.innerHTML = '';
             const currentCal = appData[currentCalName];
-            const greenCount = getGreenCount(currentCal);
 
             currentCal.colors.forEach(col => {
                 if (col === '') return;
 
-                const div = document.createElement('div');
-                div.className = 'legend-item';
+                const item = document.createElement('div');
+                item.className = 'legend-item';
 
                 const dot = document.createElement('div');
-                dot.style.width = '7px';
-                dot.style.height = '7px';
-                dot.style.borderRadius = '50%';
-                dot.style.border = '1px solid rgba(0,0,0,0.1)';
-
+                dot.className = 'legend-dot';
                 if (col === 'star') {
-                    dot.style.backgroundColor = '#ffcc00';
+                    dot.style.backgroundColor = '#ff9500';
                 } else {
                     dot.style.backgroundColor = col;
                 }
 
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = 'Метка...';
-                input.value = currentCal.legends[col] || '';
-                input.oninput = (e) => {
-                    currentCal.legends[col] = e.target.value;
-                    saveData();
-                };
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'legend-name';
+                nameSpan.innerText = currentCal.legends[col] || col;
 
-                div.appendChild(dot);
-                div.appendChild(input);
+                const countBadge = document.createElement('span');
+                countBadge.className = 'counter-badge';
+                const count = getColorCount(currentCal, col);
+                countBadge.innerText = `(${count})`;
 
-                if (col === GREEN_COLOR) {
-                    const counterBadge = document.createElement('span');
-                    counterBadge.className = `counter-badge ${greenCount >= GREEN_LIMIT ? 'limit-reached' : ''}`;
-                    counterBadge.id = 'greenCounterBadge';
-                    counterBadge.innerText = `(${greenCount}/${GREEN_LIMIT})`;
-                    div.appendChild(counterBadge);
-                }
+                item.appendChild(dot);
+                item.appendChild(nameSpan);
+                item.appendChild(countBadge);
 
-                container.appendChild(div);
+                container.appendChild(item);
             });
         }
 
@@ -619,7 +1258,6 @@
                     updateCellVisuals(cell, currentCal.days[dateKey]);
 
                     cell.onclick = () => handleCellClick(dateKey, cell, currentCal);
-
                     monthGrid.appendChild(cell);
                 }
 
@@ -628,27 +1266,20 @@
             }
         }
 
-        function handleCellClick(dateKey, cell, currentCal) {
+        async function handleCellClick(dateKey, cell, currentCal) {
             const existingValue = currentCal.days[dateKey];
 
-            // TOGGLE logic: If current cell already has the selected color/tool, clicking it again removes it
             if (existingValue === currentColor) {
                 delete currentCal.days[dateKey];
             } else {
-                // Check limit for green color placement
-                if (currentColor === GREEN_COLOR) {
-                    const currentGreenCount = getGreenCount(currentCal);
-                    if (currentGreenCount >= GREEN_LIMIT) {
-                        alert(`Достигнут лимит использования зеленого цвета (${GREEN_LIMIT} раз)!`);
-                        return;
-                    }
-                }
                 currentCal.days[dateKey] = currentColor;
             }
 
             updateCellVisuals(cell, currentCal.days[dateKey]);
-            saveData();
-            updateGreenCounterUI();
+            renderLegend();
+
+            // Автоматическое сохранение изменений в Supabase при клике на день
+            await saveCalendarToSupabase(currentCalName);
         }
 
         function updateCellVisuals(cell, value) {
@@ -672,63 +1303,8 @@
             }
         }
 
-        function updateGreenCounterUI() {
-            const currentCal = appData[currentCalName];
-            const greenCount = getGreenCount(currentCal);
-            const badge = document.getElementById('greenCounterBadge');
-            if (badge) {
-                badge.innerText = `(${greenCount}/${GREEN_LIMIT})`;
-                if (greenCount >= GREEN_LIMIT) {
-                    badge.classList.add('limit-reached');
-                } else {
-                    badge.classList.remove('limit-reached');
-                }
-            }
-        }
-
-        function saveData() {
-            localStorage.setItem('apple_overlay_calendars_v4', JSON.stringify(appData));
-        }
-
-        function saveAndRefresh() {
-            saveData();
-            initApp();
-        }
-
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", "calendars_backup.json");
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
-        }
-
-        function importDataClick() {
-            document.getElementById('importFile').click();
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    appData = imported;
-                    currentCalName = Object.keys(appData)[0];
-                    saveAndRefresh();
-                    alert("Данные успешно импортированы!");
-                } catch (err) {
-                    alert("Ошибка при чтении файла JSON.");
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        initApp();
+        // Запуск при загрузке страницы
+        init();
     </script>
 </body>
 </html>
-minimal_overlay_year_calendar_with_green_limit.html
