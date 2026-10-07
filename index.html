@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Overlay Year Calendar with Supabase</title>
-    <!-- Подключаем официальный клиент Supabase JS из CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Minimal Overlay Year Calendar</title>
     <style>
         :root {
             --bg-color: #fbfbfd;
@@ -133,6 +132,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
+        /* Добавление календаря */
         .tab-add-wrapper {
             position: relative;
             display: inline-block;
@@ -192,6 +192,7 @@
             outline: none;
             width: 100%;
             box-sizing: border-box;
+            transition: border-color 0.15s;
         }
         .calendar-popover input[type="text"]:focus {
             border-color: var(--accent);
@@ -238,18 +239,7 @@
             border-radius: 50%;
         }
 
-        .user-profile-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            cursor: pointer;
-        }
-
+        /* Палитра и легенда */
         .palette-section {
             display: flex;
             align-items: center;
@@ -289,6 +279,7 @@
             box-shadow: 0 0 0 2px var(--bg-color), 0 2px 6px rgba(0,0,0,0.15); 
         }
 
+        /* Поповер цвета */
         .color-popover {
             display: none;
             position: absolute;
@@ -362,6 +353,7 @@
         }
         .popover-ok:hover {
             opacity: 0.9;
+            background: var(--accent);
         }
 
         .color-add-btn {
@@ -530,148 +522,82 @@
             pointer-events: none;
         }
 
-        /* Модальное окно авторизации Supabase */
-        .auth-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+        /* Авторизация Google */
+        #authScreen {
             display: flex;
             align-items: center;
             justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            background: var(--bg-color);
+            position: fixed;
+            top: 0;
+            left: 0;
             z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
         }
-        .auth-modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .auth-modal {
+
+        .auth-card {
             background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 24px;
-            width: 320px;
+            padding: 30px;
+            border-radius: 14px;
             box-shadow: var(--shadow);
+            width: 300px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            box-sizing: border-box;
-        }
-        .auth-title {
-            font-size: 16px;
-            font-weight: 600;
+            border: 1px solid var(--border-color);
+            align-items: center;
             text-align: center;
-            margin: 0;
         }
-        .auth-btn-google {
+
+        .auth-card h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .google-btn {
+            width: 100%;
+            background: #ffffff;
+            color: #1d1d1f;
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            width: 100%;
             padding: 10px;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--card-bg);
-            color: var(--text-main);
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 14px;
             cursor: pointer;
-            transition: background 0.15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .auth-btn-google:hover {
-            background: var(--btn-hover);
+
+        .google-btn:hover {
+            background: #f2f2f7;
         }
-        .auth-divider {
-            display: flex;
-            align-items: center;
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 11px;
-        }
-        .auth-divider::before, .auth-divider::after {
-            content: '';
-            flex: 1;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .auth-divider::before { margin-right: 10px; }
-        .auth-divider::after { margin-left: 10px; }
-        
-        .auth-form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .auth-input {
-            font-family: inherit;
-            font-size: 13px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--cell-bg);
-            color: var(--text-main);
-            outline: none;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .auth-input:focus {
-            border-color: var(--accent);
-        }
-        .auth-submit-btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 9px;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .auth-submit-btn:hover {
-            opacity: 0.9;
-        }
-        .auth-logout-btn {
-            margin-top: 10px;
-            background: transparent;
-            color: #ff453a;
-            border: 1px solid var(--border-color);
-            width: 100%;
-            padding: 8px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .auth-logout-btn:hover {
-            background: rgba(255, 69, 58, 0.1);
+
+        [data-theme="dark"] .google-btn {
+            background: #ffffff;
+            color: #1d1d1f;
         }
     </style>
 </head>
 <body data-theme="light">
 
-    <!-- Модальное окно авторизации -->
-    <div class="auth-modal-overlay" id="authModal">
-        <div class="auth-modal" onclick="event.stopPropagation()">
-            <h3 class="auth-title" id="authModalTitle">Вход в систему</h3>
-            
-            <div id="authLoggedOutContent">
-                <button class="auth-btn-google" onclick="loginWithGoogle()">
-                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.2v3.15C3.18 21.32 7.23 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.2C.43 8.13 0 9.88 0 12s.43 3.87 1.2 5.42l4.08-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.23 0 3.18 2.68 1.2 6.58l4.08 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
-                    Войти через Google
-                </button>
 
-                <div class="auth-divider">или по ссылке (Magic Link)</div>
-
-                <div class="auth-form">
-                    <input type="email" id="emailInput" class="auth-input" placeholder="Email адрес...">
-                    <button class="auth-submit-btn" onclick="loginWithEmail()">Отправить ссылку</button>
-                </div>
-            </div>
-
-            <div id="authLoggedInContent" style="display: none;">
-                <p id="authLoggedInEmail" style="font-size: 13px; text-align: center; color: var(--text-secondary); margin: 0 0 10px 0;"></p>
-                <button class="auth-logout-btn" onclick="logout()">Выйти из аккаунта</button>
-            </div>
+    <!-- Экран входа. Авторизация остаётся через Google/Supabase -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>Вход в календарь</h2>
+            <button class="google-btn" onclick="loginWithGoogle()">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.17 21.32 7.23 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.6H1.18C.43 8.13 0 9.87 0 11.7s.43 3.57 1.18 5.1l4.09-2.56z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.23 0 3.17 2.68 1.18 6.6l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                </svg>
+                Войти через Google
+            </button>
         </div>
     </div>
 
@@ -695,13 +621,12 @@
                         </div>
                     </div>
                 </div>
+
             </div>
-            
             <div class="right-controls">
+                <span id="userEmailDisplay" style="font-size: 11px; color: var(--text-secondary);"></span>
+                <button onclick="logout()" title="Выйти">Выйти</button>
                 <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn" title="Переключить тему">🌙</button>
-                <button class="user-profile-btn" id="userProfileBtn" onclick="openAuthModal()" title="Профиль">
-                    <span id="userProfileName">Войти</span>
-                </button>
             </div>
         </div>
 
@@ -716,198 +641,98 @@
     </div>
 
     <script>
-        // Инициализация Supabase клиента
-        const SUPABASE_URL = 'https://gnczstcivximbigwtyrt.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_GXqipg1rfDcdZ9jRH8U_qg_WF-iLk5e';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // ============================
+        // Supabase + Google авторизация
+        // ============================
+        const SUPABASE_URL = 'https://ycfoswgpwlzkbcugnqzo.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable__6MjJDvIcF-T8B6geGjAcQ_uqrHuI8n';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentYear = 2027;
-        const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        let currentUser = null;
+
+        // ============================
+        // Данные приложения
+        // ============================
+        let currentYear = new Date().getFullYear();
+
+        const monthsNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+            "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+
         const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-        let defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
-        let defaultLegends = {
+        const defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
+
+        const defaultLegends = {
             '#34c759': 'Зеленый',
             '#007aff': 'Синий',
             '#8e8e93': 'Серый',
             'star': 'Важное'
         };
 
-        // Локальное хранилище для неавторизованного режима или кэша
         let appData = {};
-        let currentUser = null;
-
-        let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
-        document.body.setAttribute('data-theme', currentTheme);
-        updateThemeButtonIcon();
-
         let currentCalName = '';
         let currentColor = '#34c759';
+        let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
         let activePopoverCol = null;
+        let saveTimeout = null;
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.color-wrapper')) {
-                closeAllPopovers();
-            }
-            if (!e.target.closest('.tab-add-wrapper')) {
-                closeCalendarPopover();
-            }
-        });
+        document.body.setAttribute('data-theme', currentTheme);
 
-        // Старт приложения: проверка сессии Supabase
-        async function init() {
-            const { data: { session } } = await supabase.auth.getSession();
-            currentUser = session ? session.user : null;
-            initAuthUI();
+        // ============================
+        // Авторизация
+        // ============================
+        async function checkUserSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
 
-            await loadCalendarsFromSupabase();
-            initAppUI();
-        }
+            if (session) {
+                currentUser = session.user;
 
-        // Подгрузка календарей из таблицы Supabase
-        async function loadCalendarsFromSupabase() {
-            if (!currentUser) {
-                // Дефолтный локальный календарь для гостя
-                appData = {
-                    "Основной": {
-                        colors: [...defaultColors],
-                        legends: { ...defaultLegends },
-                        days: {}
-                    }
-                };
-                currentCalName = "Основной";
-                return;
-            }
+                document.getElementById('authScreen').style.display = 'none';
 
-            const { data, error } = await supabase
-                .from('calendars')
-                .select('*');
+                const emailEl = document.getElementById('userEmailDisplay');
+                if (emailEl) emailEl.innerText = currentUser.email || '';
 
-            if (error) {
-                console.error('Ошибка загрузки календарей:', error.message);
-                return;
-            }
-
-            if (data && data.length > 0) {
-                appData = {};
-                data.forEach(row => {
-                    appData[row.name] = {
-                        id: row.id,
-                        colors: row.colors || [...defaultColors],
-                        legends: row.legends || { ...defaultLegends },
-                        days: row.days || {}
-                    };
-                });
+                await initApp();
             } else {
-                // Если у пользователя еще нет календарей в базе, создадим дефолтный
-                appData = {
-                    "Основной": {
-                        colors: [...defaultColors],
-                        legends: { ...defaultLegends },
-                        days: {}
-                    }
-                };
-                await saveCalendarToSupabase("Основной");
+                currentUser = null;
+                document.getElementById('authScreen').style.display = 'flex';
             }
-
-            if (!appData[currentCalName]) {
-                currentCalName = Object.keys(appData)[0];
-            }
-        }
-
-        // Сохранение конкретного календаря в Supabase
-        async function saveCalendarToSupabase(calName) {
-            if (!currentUser) return; // Гости сохраняют только локально в памяти
-
-            const calData = appData[calName];
-            const payload = {
-                user_id: currentUser.id,
-                name: calName,
-                colors: calData.colors,
-                legends: calData.legends,
-                days: calData.days,
-                updated_at: new Date().toISOString()
-            };
-
-            const { error } = await supabase
-                .from('calendars')
-                .upsert(payload, { onConflict: 'user_id,name' });
-
-            if (error) {
-                console.error('Ошибка сохранения в Supabase:', error.message);
-            }
-        }
-
-        // Удаление календаря из Supabase
-        async function deleteCalendarFromSupabase(calName) {
-            if (!currentUser) return;
-            await supabase
-                .from('calendars')
-                .delete()
-                .match({ user_id: currentUser.id, name: calName });
-        }
-
-        function initAuthUI() {
-            const btnText = document.getElementById('userProfileName');
-            const loggedOutDiv = document.getElementById('authLoggedOutContent');
-            const loggedInDiv = document.getElementById('authLoggedInContent');
-            const loggedInEmail = document.getElementById('authLoggedInEmail');
-
-            if (currentUser) {
-                btnText.innerText = currentUser.email.split('@')[0];
-                loggedOutDiv.style.display = 'none';
-                loggedInDiv.style.display = 'block';
-                loggedInEmail.innerText = `Вы вошли как: ${currentUser.email}`;
-            } else {
-                btnText.innerText = 'Войти';
-                loggedOutDiv.style.display = 'block';
-                loggedInDiv.style.display = 'none';
-            }
-        }
-
-        function openAuthModal() {
-            document.getElementById('authModal').classList.add('active');
-        }
-
-        function closeAuthModal() {
-            document.getElementById('authModal').classList.remove('active');
         }
 
         async function loginWithGoogle() {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google'
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.href
+                }
             });
-            if (error) alert('Ошибка входа через Google: ' + error.message);
-        }
 
-        async function loginWithEmail() {
-            const emailInput = document.getElementById('emailInput');
-            const email = emailInput.value.trim();
-            if (!email || !email.includes('@')) {
-                alert('Введите корректный email');
-                return;
-            }
-            const { error } = await supabase.auth.signInWithOtp({ email });
-            if (error) {
-                alert('Ошибка: ' + error.message);
-            } else {
-                alert('Ссылка для входа отправлена на ваш email!');
-                closeAuthModal();
-            }
+            if (error) alert(error.message);
         }
 
         async function logout() {
-            await supabase.auth.signOut();
-            currentUser = null;
-            closeAuthModal();
-            await loadCalendarsFromSupabase();
-            initAppUI();
+            const { error } = await supabaseClient.auth.signOut();
+
+            if (error) {
+                alert(error.message);
+                return;
+            }
+
+            location.reload();
         }
 
-        document.getElementById('authModal').addEventListener('click', () => {
-            closeAuthModal();
+        // Дополнительно слушаем изменения сессии, как в рабочей версии.
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                currentUser = session.user;
+            } else {
+                currentUser = null;
+            }
         });
 
+        // ============================
+        // Тема
+        // ============================
         function toggleTheme() {
             currentTheme = currentTheme === 'light' ? 'dark' : 'light';
             document.body.setAttribute('data-theme', currentTheme);
@@ -917,9 +742,12 @@
 
         function updateThemeButtonIcon() {
             const btn = document.getElementById('themeToggleBtn');
-            btn.innerText = currentTheme === 'light' ? '🌙' : '☀️';
+            if (btn) btn.innerText = currentTheme === 'light' ? '🌙' : '☀️';
         }
 
+        // ============================
+        // Popover-ы
+        // ============================
         function closeAllPopovers() {
             document.querySelectorAll('.color-popover').forEach(p => p.classList.remove('active'));
             activePopoverCol = null;
@@ -927,17 +755,24 @@
 
         function closeCalendarPopover() {
             const popover = document.getElementById('calendarPopover');
+            if (!popover) return;
+
             popover.classList.remove('active');
-            document.getElementById('popoverError').style.display = 'none';
+
+            const error = document.getElementById('popoverError');
+            if (error) error.style.display = 'none';
         }
 
         function toggleCalendarPopover(e) {
             e.stopPropagation();
             closeAllPopovers();
+
             const popover = document.getElementById('calendarPopover');
             const isActive = popover.classList.contains('active');
+
             if (!isActive) {
                 popover.classList.add('active');
+
                 const input = document.getElementById('newCalNameInput');
                 input.value = '';
                 input.focus();
@@ -947,11 +782,117 @@
         }
 
         function handleCalendarKey(e) {
-            if (e.key === 'Enter') {
-                submitNewCalendar();
+            if (e.key === 'Enter') submitNewCalendar();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.color-wrapper')) closeAllPopovers();
+            if (!e.target.closest('.tab-add-wrapper')) closeCalendarPopover();
+        });
+
+        // ============================
+        // Загрузка / сохранение данных
+        // ============================
+        async function initApp() {
+            document.getElementById('currentYearTitle').innerText = currentYear;
+            updateThemeButtonIcon();
+
+            const { data, error } = await supabaseClient
+                .from('calendars')
+                .select('*');
+
+            if (error) {
+                console.error('Ошибка загрузки календарей:', error);
+                alert('Не удалось загрузить календари: ' + error.message);
+                return;
+            }
+
+            appData = {};
+
+            if (!data || data.length === 0) {
+                const defaultCal = {
+                    name: 'Основной',
+                    colors: [...defaultColors],
+                    legends: { ...defaultLegends },
+                    days: {}
+                };
+
+                const { error: insertError } = await supabaseClient
+                    .from('calendars')
+                    .insert([defaultCal]);
+
+                if (insertError) {
+                    console.error('Ошибка создания основного календаря:', insertError);
+                    alert('Не удалось создать основной календарь: ' + insertError.message);
+                    return;
+                }
+
+                appData['Основной'] = {
+                    colors: [...defaultCal.colors],
+                    legends: { ...defaultCal.legends },
+                    days: {}
+                };
+            } else {
+                data.forEach(row => {
+                    appData[row.name] = {
+                        colors: Array.isArray(row.colors) ? row.colors : [...defaultColors],
+                        legends: row.legends || { ...defaultLegends },
+                        days: row.days || {}
+                    };
+                });
+            }
+
+            if (!currentCalName || !appData[currentCalName]) {
+                currentCalName = Object.keys(appData)[0];
+            }
+
+            const currentCal = appData[currentCalName];
+
+            if (!currentCal.colors.includes(currentColor)) {
+                currentColor = currentCal.colors[0] || '#34c759';
+            }
+
+            renderTabs();
+            renderPalette();
+            renderLegend();
+            renderYear();
+        }
+
+        async function saveData() {
+            if (!currentCalName || !appData[currentCalName]) return;
+
+            const cal = appData[currentCalName];
+
+            const { error } = await supabaseClient
+                .from('calendars')
+                .update({
+                    colors: cal.colors,
+                    legends: cal.legends,
+                    days: cal.days,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('name', currentCalName);
+
+            if (error) {
+                console.error('Ошибка сохранения:', error);
             }
         }
 
+        function saveDataDebounced() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveData();
+            }, 500);
+        }
+
+        async function saveAndRefresh() {
+            await saveData();
+            await initApp();
+        }
+
+        // ============================
+        // Календари
+        // ============================
         async function submitNewCalendar() {
             const input = document.getElementById('newCalNameInput');
             const errorSpan = document.getElementById('popoverError');
@@ -964,22 +905,52 @@
                 return;
             }
 
-            appData[name] = {
+            const newCal = {
+                name,
                 colors: [...defaultColors],
                 legends: { ...defaultLegends },
                 days: {}
             };
+
+            const { error } = await supabaseClient
+                .from('calendars')
+                .insert([newCal]);
+
+            if (error) {
+                console.error('Ошибка создания календаря:', error);
+                alert('Не удалось создать календарь: ' + error.message);
+                return;
+            }
+
+            appData[name] = {
+                colors: [...newCal.colors],
+                legends: { ...newCal.legends },
+                days: {}
+            };
+
             currentCalName = name;
             currentColor = '#34c759';
+
             closeCalendarPopover();
 
-            await saveCalendarToSupabase(name);
-            initAppUI();
+            renderTabs();
+            renderPalette();
+            renderLegend();
+            renderYear();
         }
 
-        function initAppUI() {
-            document.getElementById('currentYearTitle').innerText = currentYear;
-            initAuthUI();
+        function switchCalendar(name) {
+            currentCalName = name;
+
+            const currentCal = appData[currentCalName];
+
+            if (!currentCal.colors.includes(currentColor)) {
+                currentColor = currentCal.colors[0] || '#34c759';
+            }
+
+            closeAllPopovers();
+            closeCalendarPopover();
+
             renderTabs();
             renderPalette();
             renderLegend();
@@ -988,70 +959,67 @@
 
         function changeYear(delta) {
             currentYear += delta;
-            initAppUI();
-        }
-
-        function renderTabs() {
-            const container = document.getElementById('tabsContainer');
-            container.innerHTML = '';
-            Object.keys(appData).forEach(name => {
-                const tab = document.createElement('div');
-                tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
-                tab.innerText = name;
-                tab.onclick = () => switchCalendar(name);
-                container.appendChild(tab);
-            });
-        }
-
-        function switchCalendar(name) {
-            currentCalName = name;
-            const currentCal = appData[currentCalName];
-            if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || '#34c759';
-            }
-            closeAllPopovers();
-            closeCalendarPopover();
-            renderTabs();
-            renderPalette();
-            renderLegend();
+            document.getElementById('currentYearTitle').innerText = currentYear;
             renderYear();
+            renderLegend();
         }
 
-        async function addNewColor() {
-            const colorInput = prompt("Введите HEX-код цвета (например, #ff9500 или #af52de):", "#ff9500");
+        // ============================
+        // Цвета
+        // ============================
+        function addNewColor() {
+            const colorInput = prompt(
+                "Введите HEX-код цвета (например, #ff9500 или #af52de):",
+                "#ff9500"
+            );
+
             if (!colorInput) return;
+
             const hex = colorInput.trim();
             const currentCal = appData[currentCalName];
-            
+
+            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                alert('Введите корректный HEX-код, например #ff9500');
+                return;
+            }
+
             if (!currentCal.colors.includes(hex)) {
                 const starIdx = currentCal.colors.indexOf('star');
+
                 if (starIdx !== -1) {
                     currentCal.colors.splice(starIdx, 0, hex);
                 } else {
                     currentCal.colors.push(hex);
                 }
+
                 currentCal.legends[hex] = 'Новый';
                 currentColor = hex;
-                
-                await saveCalendarToSupabase(currentCalName);
-                initAppUI();
+
+                saveAndRefresh();
             }
         }
 
         function getColorCount(currentCal, col) {
             let count = 0;
-            for (let dateKey in currentCal.days) {
-                if (dateKey.startsWith(currentYear) && currentCal.days[dateKey] === col) {
+
+            for (const dateKey in currentCal.days) {
+                if (
+                    dateKey.startsWith(String(currentYear)) &&
+                    currentCal.days[dateKey] === col
+                ) {
                     count++;
                 }
             }
+
             return count;
         }
 
         function renderPalette() {
             const paletteContainer = document.getElementById('colorPalette');
             paletteContainer.innerHTML = '';
+
             const currentCal = appData[currentCalName];
+            if (!currentCal) return;
 
             currentCal.colors.forEach(col => {
                 if (col === '') return;
@@ -1075,14 +1043,19 @@
 
                 btn.onclick = (e) => {
                     e.stopPropagation();
+
                     if (currentColor === col) {
                         closeCalendarPopover();
+
                         const popover = wrapper.querySelector('.color-popover');
                         const isActive = popover.classList.contains('active');
+
                         closeAllPopovers();
+
                         if (!isActive) {
                             popover.classList.add('active');
                             activePopoverCol = col;
+
                             const inputField = popover.querySelector('input');
                             inputField.value = currentCal.legends[col] || '';
                             inputField.focus();
@@ -1097,7 +1070,9 @@
                 wrapper.appendChild(btn);
 
                 const popover = document.createElement('div');
-                popover.className = `color-popover ${activePopoverCol === col ? 'active' : ''}`;
+                popover.className =
+                    `color-popover ${activePopoverCol === col ? 'active' : ''}`;
+
                 popover.onclick = (e) => e.stopPropagation();
 
                 const input = document.createElement('input');
@@ -1118,19 +1093,25 @@
                     const delBtn = document.createElement('button');
                     delBtn.className = 'popover-delete';
                     delBtn.innerText = 'Удалить';
+
                     delBtn.onclick = async () => {
-                        if (confirm('Удалить этот цвет?')) {
-                            currentCal.colors = currentCal.colors.filter(c => c !== col);
-                            delete currentCal.legends[col];
-                            for (let dKey in currentCal.days) {
-                                if (currentCal.days[dKey] === col) delete currentCal.days[dKey];
+                        if (!confirm('Удалить этот цвет?')) return;
+
+                        currentCal.colors = currentCal.colors.filter(c => c !== col);
+                        delete currentCal.legends[col];
+
+                        for (const dKey in currentCal.days) {
+                            if (currentCal.days[dKey] === col) {
+                                delete currentCal.days[dKey];
                             }
-                            currentColor = currentCal.colors[0];
-                            closeAllPopovers();
-                            await saveCalendarToSupabase(currentCalName);
-                            initAppUI();
                         }
+
+                        currentColor = currentCal.colors[0] || '#34c759';
+
+                        closeAllPopovers();
+                        await saveAndRefresh();
                     };
+
                     actionsRow.appendChild(delBtn);
                 } else {
                     const emptyDiv = document.createElement('div');
@@ -1147,6 +1128,7 @@
                 popover.appendChild(input);
                 popover.appendChild(actionsRow);
                 wrapper.appendChild(popover);
+
                 paletteContainer.appendChild(wrapper);
             });
 
@@ -1154,26 +1136,36 @@
             addBtn.className = 'color-add-btn';
             addBtn.innerHTML = '+';
             addBtn.title = 'Добавить новый цвет';
+
             addBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeCalendarPopover();
                 addNewColor();
             };
+
             paletteContainer.appendChild(addBtn);
         }
 
-        async function savePopoverValue(col, value) {
+        function savePopoverValue(col, value) {
             const currentCal = appData[currentCalName];
+
             currentCal.legends[col] = value.trim() || col;
-            await saveCalendarToSupabase(currentCalName);
+
+            saveDataDebounced();
+            renderPalette();
             renderLegend();
             closeAllPopovers();
         }
 
+        // ============================
+        // Легенда
+        // ============================
         function renderLegend() {
             const container = document.getElementById('legendContainer');
             container.innerHTML = '';
+
             const currentCal = appData[currentCalName];
+            if (!currentCal) return;
 
             currentCal.colors.forEach(col => {
                 if (col === '') return;
@@ -1183,6 +1175,7 @@
 
                 const dot = document.createElement('div');
                 dot.className = 'legend-dot';
+
                 if (col === 'star') {
                     dot.style.backgroundColor = '#ff9500';
                 } else {
@@ -1195,8 +1188,7 @@
 
                 const countBadge = document.createElement('span');
                 countBadge.className = 'counter-badge';
-                const count = getColorCount(currentCal, col);
-                countBadge.innerText = `(${count})`;
+                countBadge.innerText = `(${getColorCount(currentCal, col)})`;
 
                 item.appendChild(dot);
                 item.appendChild(nameSpan);
@@ -1206,10 +1198,15 @@
             });
         }
 
+        // ============================
+        // Годовой календарь
+        // ============================
         function renderYear() {
             const yearGrid = document.getElementById('yearGrid');
             yearGrid.innerHTML = '';
+
             const currentCal = appData[currentCalName];
+            if (!currentCal) return;
 
             for (let m = 0; m < 12; m++) {
                 const card = document.createElement('div');
@@ -1222,19 +1219,21 @@
 
                 const wkHeader = document.createElement('div');
                 wkHeader.className = 'weekdays-header';
+
                 weekdays.forEach(wd => {
                     const d = document.createElement('div');
                     d.innerText = wd;
                     wkHeader.appendChild(d);
                 });
+
                 card.appendChild(wkHeader);
 
                 const monthGrid = document.createElement('div');
                 monthGrid.className = 'month-grid';
 
                 let firstDayIndex = new Date(currentYear, m, 1).getDay();
-                firstDayIndex = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
-                
+                firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
                 const totalDays = new Date(currentYear, m + 1, 0).getDate();
 
                 for (let i = 0; i < firstDayIndex; i++) {
@@ -1257,7 +1256,10 @@
 
                     updateCellVisuals(cell, currentCal.days[dateKey]);
 
-                    cell.onclick = () => handleCellClick(dateKey, cell, currentCal);
+                    cell.onclick = async () => {
+                        await handleCellClick(dateKey, cell, currentCal);
+                    };
+
                     monthGrid.appendChild(cell);
                 }
 
@@ -1276,15 +1278,18 @@
             }
 
             updateCellVisuals(cell, currentCal.days[dateKey]);
-            renderLegend();
 
-            // Автоматическое сохранение изменений в Supabase при клике на день
-            await saveCalendarToSupabase(currentCalName);
+            // Сразу сохраняем изменение в Supabase.
+            await saveData();
+
+            // Счётчики обновляются без полной перерисовки календаря.
+            renderLegend();
         }
 
         function updateCellVisuals(cell, value) {
             const oldOverlay = cell.querySelector('.overlay');
             const oldStar = cell.querySelector('.star-overlay');
+
             if (oldOverlay) oldOverlay.remove();
             if (oldStar) oldStar.remove();
 
@@ -1303,8 +1308,8 @@
             }
         }
 
-        // Запуск при загрузке страницы
-        init();
+        // Запуск приложения.
+        checkUserSession();
     </script>
 </body>
 </html>
