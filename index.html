@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <title>Minimal Overlay Year Calendar</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M25 35h50v50H25z' fill='%23ffffff' opacity='0.15'/><rect x='25' y='25' width='50' height='14' rx='4' fill='%23ff3b30'/><circle cx='38' cy='58' r='10' fill='%2334c759' opacity='0.9'/><circle cx='62' cy='58' r='10' fill='%23af52de' opacity='0.9'/><text x='50' y='36' font-family='-apple-system, sans-serif' font-size='10' font-weight='bold' fill='%23ffffff' text-anchor='middle'>CAL</text></svg>">
     <style>
         :root {
             --bg-color: #fbfbfd;
@@ -136,39 +135,26 @@
         .tab-wrapper {
             position: relative;
             display: inline-block;
+            flex: 0 0 auto;
+            cursor: grab;
         }
 
-        .tab-delete {
-            display: none;
-            position: absolute;
-            top: 2px;
-            right: 3px;
-            width: 15px;
-            height: 15px;
-            padding: 0;
-            border: none;
-            border-radius: 50%;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 12px;
-            line-height: 15px;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 2;
+        .tab-wrapper.dragging,
+        .color-wrapper.dragging {
+            opacity: 0.45;
         }
 
-        .tab-wrapper:hover .tab-delete,
-        .tab-wrapper .tab-delete:focus {
-            display: flex;
+        .tab-wrapper.drag-over,
+        .color-wrapper.drag-over {
+            transform: translateX(2px);
         }
 
-        .tab-delete:hover {
-            background: #ff453a;
-            color: #fff;
+        .tab-wrapper:active,
+        .color-wrapper:active {
+            cursor: grabbing;
         }
 
-        .calendar-delete-popover {
+        .calendar-popover-menu {
             display: none;
             position: absolute;
             top: 34px;
@@ -185,20 +171,21 @@
             z-index: 120;
             gap: 8px;
             animation: popoverFade 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: default;
         }
 
-        .calendar-delete-popover.active {
+        .calendar-popover-menu.active {
             display: flex;
             flex-direction: column;
         }
 
-        .calendar-delete-title {
+        .calendar-menu-title {
             font-size: 11px;
             font-weight: 600;
             color: var(--text-main);
         }
 
-        .calendar-delete-name {
+        .calendar-menu-name {
             font-size: 11px;
             color: var(--text-secondary);
             white-space: nowrap;
@@ -206,253 +193,61 @@
             text-overflow: ellipsis;
         }
 
-        .calendar-delete-actions {
+        .calendar-menu-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            background: var(--cell-bg);
+            color: var(--text-main);
+            font: inherit;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .calendar-menu-input:focus {
+            border-color: var(--accent);
+        }
+
+        .calendar-menu-actions {
             display: flex;
             justify-content: flex-end;
             gap: 6px;
         }
 
-        .calendar-delete-cancel {
-            background: transparent;
+        .calendar-menu-cancel,
+        .calendar-menu-rename,
+        .calendar-menu-delete {
             border: none;
-            color: var(--text-secondary);
             padding: 4px 8px;
+            border-radius: 6px;
             font-size: 11px;
+            cursor: pointer;
         }
 
-        .calendar-delete-confirm {
+        .calendar-menu-cancel {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .calendar-menu-rename {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .calendar-menu-delete {
             background: #ff453a;
             color: #fff;
-            border: none;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 500;
         }
 
-        .calendar-delete-confirm:hover {
-            background: #ff3b30;
-        }
-
-        /* Добавление календаря */
-        .tab-add-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .tab-add-btn {
-            font-family: inherit;
-            font-size: 13px;
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            border: 1px dashed var(--border-color);
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        .tab-add-btn:hover {
-            background: var(--btn-hover);
-            color: var(--text-main);
-            border-color: var(--text-main);
-        }
-
-        .calendar-popover {
+        .calendar-menu-error {
             display: none;
-            position: absolute;
-            top: 36px;
-            left: 0;
-            background: var(--popover-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: var(--shadow);
-            z-index: 100;
-            width: 200px;
-            box-sizing: border-box;
-            gap: 8px;
-            animation: popoverFade 0.15s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .calendar-popover.active {
-            display: flex;
-            flex-direction: column;
-        }
-        .calendar-popover input[type="text"] {
-            font-family: inherit;
-            font-size: 12px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--cell-bg);
-            color: var(--text-main);
-            outline: none;
-            width: 100%;
-            box-sizing: border-box;
-            transition: border-color 0.15s;
-        }
-        .calendar-popover input[type="text"]:focus {
-            border-color: var(--accent);
-        }
-        .calendar-popover-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 6px;
-        }
-        .popover-error {
+            color: #ff453a;
             font-size: 10px;
-            color: #ff453a;
-            display: none;
-            margin-top: -4px;
+            line-height: 1.3;
         }
 
-        button {
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 5px 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--card-bg);
-            color: var(--text-main);
-            cursor: pointer;
-            transition: all 0.15s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        button:hover {
-            background: var(--btn-hover);
-        }
-        button:active {
-            transform: scale(0.96);
-        }
-
-        .theme-toggle-btn {
-            font-size: 14px;
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        /* Палитра и легенда */
-        .palette-section {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-            font-size: 12px;
-            padding-top: 2px;
-        }
-
-        .palette {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .color-wrapper {
-            position: relative;
-        }
-
-        .color-btn {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            box-sizing: border-box;
-        }
-        .color-btn:hover { transform: scale(1.12); }
-        .color-btn.selected { 
-            border-color: var(--text-main); 
-            box-shadow: 0 0 0 2px var(--bg-color), 0 2px 6px rgba(0,0,0,0.15); 
-        }
-
-        /* Поповер цвета */
-        .color-popover {
-            display: none;
-            position: absolute;
-            top: 30px;
-            left: 0;
-            background: var(--popover-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: var(--shadow);
-            z-index: 100;
-            width: 180px;
-            box-sizing: border-box;
-            gap: 8px;
-            animation: popoverFade 0.15s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .color-popover.active {
-            display: flex;
-            flex-direction: column;
-        }
-        @keyframes popoverFade {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .color-popover input[type="text"] {
-            font-family: inherit;
-            font-size: 12px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--cell-bg);
-            color: var(--text-main);
-            outline: none;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .color-popover input[type="text"]:focus {
-            border-color: var(--accent);
-        }
-
-        .popover-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .popover-delete {
-            color: #ff453a;
-            background: none;
-            border: none;
-            padding: 0;
-            font-size: 11px;
-            cursor: pointer;
-            opacity: 0.8;
-            transition: opacity 0.15s;
-        }
-        .popover-delete:hover {
-            opacity: 1;
-            text-decoration: underline;
-        }
-        .popover-ok {
-            background: var(--accent);
-            color: #ffffff;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 500;
-        }
         .popover-ok:hover {
             opacity: 0.9;
             background: var(--accent);
@@ -845,20 +640,89 @@
 
         const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-        const defaultColors = ['#34c759', '#007aff', '#8e8e93', 'star'];
+        // Фиксированный набор из 8 пастельных цветов + отдельная ⭐ «Важное».
+        const defaultColors = [
+            '#A8D5BA', // зеленый
+            '#D1D5DB', // серый
+            '#A9D6E5', // голубой
+            '#F4B6B6', // красный
+            '#F6E7A8', // желтый
+            '#C9B7E8', // лавандовый
+            '#F7C6A3', // персиковый
+            '#F3B6D2', // розовый
+            'star'
+        ];
 
         const defaultLegends = {
-            '#34c759': 'Зеленый',
-            '#007aff': 'Синий',
-            '#8e8e93': 'Серый',
+            '#A8D5BA': 'Зеленый',
+            '#D1D5DB': 'Серый',
+            '#A9D6E5': 'Голубой',
+            '#F4B6B6': 'Красный',
+            '#F6E7A8': 'Желтый',
+            '#C9B7E8': 'Лавандовый',
+            '#F7C6A3': 'Персиковый',
+            '#F3B6D2': 'Розовый',
             'star': 'Важное'
         };
 
+        function normalizeCalendarColors(calendar) {
+            const oldColors = Array.isArray(calendar.colors) ? calendar.colors : [];
+            const newRegular = defaultColors.filter(c => c !== 'star');
+            const oldRegular = oldColors.filter(c => c && c !== 'star');
+            const oldLegends = calendar.legends && typeof calendar.legends === 'object' ? calendar.legends : {};
+            const newLegends = { ...defaultLegends };
+            const colorMap = {};
+            let normalizedRegular;
+
+            // Если календарь уже использует новый набор, сохраняем пользовательский порядок.
+            if (oldRegular.every(c => newRegular.includes(c))) {
+                normalizedRegular = [...oldRegular];
+                newRegular.forEach(color => {
+                    if (!normalizedRegular.includes(color)) normalizedRegular.push(color);
+                });
+
+                normalizedRegular.forEach(color => {
+                    if (oldLegends[color]) newLegends[color] = oldLegends[color];
+                    colorMap[color] = color;
+                });
+            } else {
+                // Для старых календарей переводим старые цвета в новый фиксированный набор
+                // по их прежнему порядку, чтобы уже отмеченные дни не пропали.
+                oldRegular.forEach((oldColor, index) => {
+                    if (index < newRegular.length) {
+                        const newColor = newRegular[index];
+                        colorMap[oldColor] = newColor;
+                        if (oldLegends[oldColor]) newLegends[newColor] = oldLegends[oldColor];
+                    }
+                });
+                normalizedRegular = [...newRegular];
+            }
+
+            const oldDays = calendar.days && typeof calendar.days === 'object' ? calendar.days : {};
+            const newDays = {};
+            Object.keys(oldDays).forEach(dateKey => {
+                const value = oldDays[dateKey];
+                if (value === 'star') {
+                    newDays[dateKey] = 'star';
+                } else if (colorMap[value]) {
+                    newDays[dateKey] = colorMap[value];
+                }
+            });
+
+            return {
+                colors: [...normalizedRegular, 'star'],
+                legends: newLegends,
+                days: newDays
+            };
+        }
+
         let appData = {};
         let currentCalName = '';
-        let currentColor = '#34c759';
+        let currentColor = defaultColors[0];
         let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
         let activePopoverCol = null;
+        let draggedCalendarName = null;
+        let draggedColor = null;
         let saveTimeout = null;
 
         document.body.setAttribute('data-theme', currentTheme);
@@ -1061,7 +925,7 @@
                 closeNewColorPopover();
             }
             if (!e.target.closest('.tab-add-wrapper')) closeCalendarPopover();
-            if (!e.target.closest('.tab-wrapper')) closeCalendarDeletePopovers();
+            if (!e.target.closest('.tab-wrapper')) closeCalendarMenus();
         });
 
         // ============================
@@ -1108,22 +972,36 @@
                 };
             } else {
                 data.forEach(row => {
-                    appData[row.name] = {
-                        colors: Array.isArray(row.colors) ? row.colors : [...defaultColors],
-                        legends: row.legends || { ...defaultLegends },
-                        days: row.days || {}
-                    };
+                    appData[row.name] = normalizeCalendarColors({
+                        colors: row.colors,
+                        legends: row.legends,
+                        days: row.days
+                    });
                 });
+            }
+
+            const savedCalendarOrder = JSON.parse(localStorage.getItem('apple_calendar_order') || 'null');
+            if (Array.isArray(savedCalendarOrder)) {
+                const ordered = {};
+                savedCalendarOrder.forEach(name => {
+                    if (appData[name]) ordered[name] = appData[name];
+                });
+                Object.keys(appData).forEach(name => {
+                    if (!ordered[name]) ordered[name] = appData[name];
+                });
+                appData = ordered;
             }
 
             if (!currentCalName || !appData[currentCalName]) {
                 currentCalName = Object.keys(appData)[0];
             }
 
+            localStorage.setItem('apple_calendar_order', JSON.stringify(Object.keys(appData)));
+
             const currentCal = appData[currentCalName];
 
             if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || '#34c759';
+                currentColor = currentCal.colors[0] || defaultColors[0];
             }
 
             renderTabs();
@@ -1173,82 +1051,179 @@
             Object.keys(appData).forEach(name => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'tab-wrapper';
+                wrapper.draggable = true;
+                wrapper.dataset.calendarName = name;
 
                 const tab = document.createElement('div');
                 tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
                 tab.innerText = name;
-                tab.title = name;
-                tab.onclick = () => switchCalendar(name);
-
+                tab.title = 'Нажмите ещё раз для переименования или удаления';
+                tab.onclick = (e) => {
+                    e.stopPropagation();
+                    if (name === currentCalName) {
+                        toggleCalendarMenu(wrapper, name);
+                    } else {
+                        switchCalendar(name);
+                    }
+                };
                 wrapper.appendChild(tab);
 
-                // Кнопка удаления появляется при наведении на вкладку.
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'tab-delete';
-                deleteBtn.innerText = '×';
-                deleteBtn.title = 'Удалить календарь';
-                deleteBtn.setAttribute('aria-label', `Удалить календарь ${name}`);
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleCalendarDeletePopover(wrapper, name);
-                };
-                wrapper.appendChild(deleteBtn);
-
-                const deletePopover = document.createElement('div');
-                deletePopover.className = 'calendar-delete-popover';
-                deletePopover.onclick = (e) => e.stopPropagation();
-                deletePopover.innerHTML = `
-                    <div class="calendar-delete-title">Удалить календарь?</div>
-                    <div class="calendar-delete-name"></div>
-                    <div class="calendar-delete-actions">
-                        <button class="calendar-delete-cancel">Отмена</button>
-                        <button class="calendar-delete-confirm">Удалить</button>
+                const popover = document.createElement('div');
+                popover.className = 'calendar-popover-menu';
+                popover.onclick = e => e.stopPropagation();
+                popover.innerHTML = `
+                    <div class="calendar-menu-title">Календарь</div>
+                    <div class="calendar-menu-name"></div>
+                    <input class="calendar-menu-input" type="text" placeholder="Название...">
+                    <div class="calendar-menu-error">Такое название уже существует</div>
+                    <div class="calendar-menu-actions">
+                        <button class="calendar-menu-cancel">Отмена</button>
+                        <button class="calendar-menu-rename">Переименовать</button>
+                        <button class="calendar-menu-delete">Удалить</button>
                     </div>
                 `;
 
-                deletePopover.querySelector('.calendar-delete-name').innerText = name;
-                deletePopover.querySelector('.calendar-delete-cancel').onclick = (e) => {
-                    e.stopPropagation();
-                    closeCalendarDeletePopovers();
+                const nameLabel = popover.querySelector('.calendar-menu-name');
+                const input = popover.querySelector('.calendar-menu-input');
+                const error = popover.querySelector('.calendar-menu-error');
+                nameLabel.innerText = name;
+                input.value = name;
+
+                popover.querySelector('.calendar-menu-cancel').onclick = () => {
+                    closeCalendarMenus();
                 };
-                deletePopover.querySelector('.calendar-delete-confirm').onclick = async (e) => {
-                    e.stopPropagation();
+                popover.querySelector('.calendar-menu-rename').onclick = async () => {
+                    await renameCalendar(name, input.value);
+                };
+                popover.querySelector('.calendar-menu-delete').onclick = async () => {
                     await deleteCalendar(name);
                 };
+                input.onkeydown = async (e) => {
+                    if (e.key === 'Enter') await renameCalendar(name, input.value);
+                    if (e.key === 'Escape') closeCalendarMenus();
+                };
 
-                wrapper.appendChild(deletePopover);
+                wrapper.appendChild(popover);
+
+                wrapper.addEventListener('dragstart', e => {
+                    if (e.target.closest('.calendar-popover-menu')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    draggedCalendarName = name;
+                    wrapper.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', name);
+                });
+
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.classList.remove('dragging');
+                    document.querySelectorAll('.tab-wrapper').forEach(el => el.classList.remove('drag-over'));
+                    draggedCalendarName = null;
+                });
+
+                wrapper.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    if (draggedCalendarName && draggedCalendarName !== name) {
+                        wrapper.classList.add('drag-over');
+                    }
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
+
+                wrapper.addEventListener('drop', async e => {
+                    e.preventDefault();
+                    wrapper.classList.remove('drag-over');
+                    if (!draggedCalendarName || draggedCalendarName === name) return;
+
+                    const names = Object.keys(appData);
+                    const from = names.indexOf(draggedCalendarName);
+                    const to = names.indexOf(name);
+                    if (from === -1 || to === -1) return;
+
+                    names.splice(from, 1);
+                    names.splice(to, 0, draggedCalendarName);
+                    const reordered = {};
+                    names.forEach(n => reordered[n] = appData[n]);
+                    appData = reordered;
+                    localStorage.setItem('apple_calendar_order', JSON.stringify(names));
+                    closeCalendarMenus();
+                    renderTabs();
+                });
+
                 container.appendChild(wrapper);
             });
         }
 
-        function closeCalendarDeletePopovers() {
-            document.querySelectorAll('.calendar-delete-popover').forEach(p => {
-                p.classList.remove('active');
-            });
+        function closeCalendarMenus() {
+            document.querySelectorAll('.calendar-popover-menu').forEach(p => p.classList.remove('active'));
         }
 
-        function toggleCalendarDeletePopover(wrapper, name) {
+        function toggleCalendarMenu(wrapper, name) {
             closeAllPopovers();
             closeNewColorPopover();
             closeCalendarPopover();
 
-            const popover = wrapper.querySelector('.calendar-delete-popover');
+            const popover = wrapper.querySelector('.calendar-popover-menu');
             if (!popover) return;
 
             const wasActive = popover.classList.contains('active');
-            closeCalendarDeletePopovers();
+            closeCalendarMenus();
 
             if (!wasActive) {
                 popover.classList.add('active');
+                const input = popover.querySelector('.calendar-menu-input');
+                const error = popover.querySelector('.calendar-menu-error');
+                input.value = name;
+                error.style.display = 'none';
+                setTimeout(() => input.focus(), 0);
             }
+        }
+
+        async function renameCalendar(oldName, newName) {
+            newName = String(newName || '').trim();
+            if (!newName || newName === oldName) {
+                closeCalendarMenus();
+                return;
+            }
+
+            if (appData[newName]) {
+                const active = document.querySelector('.calendar-popover-menu.active');
+                const error = active?.querySelector('.calendar-menu-error');
+                if (error) error.style.display = 'block';
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('calendars')
+                .update({ name: newName, updated_at: new Date().toISOString() })
+                .eq('name', oldName);
+
+            if (error) {
+                console.error('Ошибка переименования календаря:', error);
+                return;
+            }
+
+            const names = Object.keys(appData);
+            const renamed = {};
+            names.forEach(name => {
+                renamed[name === oldName ? newName : name] = appData[name];
+            });
+            appData = renamed;
+
+            if (currentCalName === oldName) currentCalName = newName;
+            localStorage.setItem('apple_calendar_order', JSON.stringify(Object.keys(appData)));
+
+            closeCalendarMenus();
+            renderTabs();
         }
 
         async function deleteCalendar(name) {
             if (!appData[name]) return;
 
-            // Не позволяем удалить последний календарь.
             if (Object.keys(appData).length <= 1) {
-                closeCalendarDeletePopovers();
+                closeCalendarMenus();
                 return;
             }
 
@@ -1263,14 +1238,15 @@
             }
 
             delete appData[name];
+            localStorage.setItem('apple_calendar_order', JSON.stringify(Object.keys(appData)));
 
             if (currentCalName === name) {
                 currentCalName = Object.keys(appData)[0];
                 const currentCal = appData[currentCalName];
-                currentColor = currentCal.colors[0] || '#34c759';
+                currentColor = currentCal.colors[0] || defaultColors[0];
             }
 
-            closeCalendarDeletePopovers();
+            closeCalendarMenus();
             closeAllPopovers();
             closeCalendarPopover();
             closeNewColorPopover();
@@ -1320,7 +1296,7 @@
             };
 
             currentCalName = name;
-            currentColor = '#34c759';
+            currentColor = defaultColors[0];
 
             closeCalendarPopover();
 
@@ -1336,13 +1312,13 @@
             const currentCal = appData[currentCalName];
 
             if (!currentCal.colors.includes(currentColor)) {
-                currentColor = currentCal.colors[0] || '#34c759';
+                currentColor = currentCal.colors[0] || defaultColors[0];
             }
 
             closeAllPopovers();
             closeNewColorPopover();
             closeCalendarPopover();
-            closeCalendarDeletePopovers();
+            closeCalendarMenus();
 
             renderTabs();
             renderPalette();
@@ -1360,87 +1336,7 @@
         // ============================
         // Цвета
         // ============================
-        const MAX_CUSTOM_COLORS = 8;
-
-        function addNewColor() {
-            const currentCal = appData[currentCalName];
-            if (!currentCal) return;
-
-            // Лимит относится к обычным цветам. Звездочка считается отдельным маркером.
-            const regularColors = currentCal.colors.filter(c => c !== 'star');
-
-            if (regularColors.length >= MAX_CUSTOM_COLORS) {
-                const error = document.getElementById('newColorError');
-                if (error) {
-                    error.innerText = 'Можно добавить максимум 8 цветов.';
-                    error.style.display = 'block';
-                }
-                return;
-            }
-
-            closeCalendarPopover();
-            closeAllPopovers();
-
-            const popover = document.getElementById('newColorPopover');
-            const picker = document.getElementById('newColorPicker');
-            const preview = document.getElementById('newColorPreview');
-            const error = document.getElementById('newColorError');
-
-            if (!popover || !picker) return;
-
-            picker.value = '#ff9500';
-            if (preview) preview.style.backgroundColor = picker.value;
-            if (error) error.style.display = 'none';
-
-            popover.classList.add('active');
-            picker.focus();
-        }
-
-        async function saveNewColor() {
-            const currentCal = appData[currentCalName];
-            const picker = document.getElementById('newColorPicker');
-            const preview = document.getElementById('newColorPreview');
-            const error = document.getElementById('newColorError');
-
-            if (!currentCal || !picker) return;
-
-            const hex = picker.value.toLowerCase();
-            const regularColors = currentCal.colors.filter(c => c !== 'star');
-
-            if (regularColors.length >= MAX_CUSTOM_COLORS) {
-                if (error) {
-                    error.innerText = 'Можно добавить максимум 8 цветов.';
-                    error.style.display = 'block';
-                }
-                return;
-            }
-
-            if (currentCal.colors.map(c => c.toLowerCase()).includes(hex)) {
-                if (error) {
-                    error.innerText = 'Этот цвет уже добавлен.';
-                    error.style.display = 'block';
-                }
-                return;
-            }
-
-            const starIdx = currentCal.colors.indexOf('star');
-            if (starIdx !== -1) {
-                currentCal.colors.splice(starIdx, 0, hex);
-            } else {
-                currentCal.colors.push(hex);
-            }
-
-            currentCal.legends[hex] = 'Новый';
-            currentColor = hex;
-
-            closeNewColorPopover();
-            await saveAndRefresh();
-        }
-
-        function closeNewColorPopover() {
-            const popover = document.getElementById('newColorPopover');
-            if (popover) popover.classList.remove('active');
-        }
+        function closeNewColorPopover() {}
 
         function getColorCount(currentCal, col) {
             let count = 0;
@@ -1469,6 +1365,8 @@
 
                 const wrapper = document.createElement('div');
                 wrapper.className = 'color-wrapper';
+                wrapper.draggable = true;
+                wrapper.dataset.color = col;
 
                 const btn = document.createElement('div');
                 btn.className = `color-btn ${currentColor === col ? 'selected' : ''}`;
@@ -1547,7 +1445,7 @@
                             }
                         }
 
-                        currentColor = currentCal.colors[0] || '#34c759';
+                        currentColor = currentCal.colors[0] || defaultColors[0];
 
                         closeAllPopovers();
                         await saveAndRefresh();
@@ -1570,60 +1468,49 @@
                 popover.appendChild(actionsRow);
                 wrapper.appendChild(popover);
 
+                wrapper.addEventListener('dragstart', e => {
+                    if (e.target.closest('.color-popover')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    draggedColor = col;
+                    wrapper.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', col);
+                });
+
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.classList.remove('dragging');
+                    document.querySelectorAll('.color-wrapper').forEach(el => el.classList.remove('drag-over'));
+                    draggedColor = null;
+                });
+
+                wrapper.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    if (draggedColor && draggedColor !== col) wrapper.classList.add('drag-over');
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
+
+                wrapper.addEventListener('drop', e => {
+                    e.preventDefault();
+                    wrapper.classList.remove('drag-over');
+                    if (!draggedColor || draggedColor === col) return;
+
+                    const from = currentCal.colors.indexOf(draggedColor);
+                    const to = currentCal.colors.indexOf(col);
+                    if (from === -1 || to === -1) return;
+
+                    currentCal.colors.splice(from, 1);
+                    currentCal.colors.splice(to, 0, draggedColor);
+                    closeAllPopovers();
+                    renderPalette();
+                    renderLegend();
+                    saveDataDebounced();
+                });
+
                 paletteContainer.appendChild(wrapper);
-            });
-
-            const addWrapper = document.createElement('div');
-            addWrapper.className = 'color-wrapper';
-
-            const addBtn = document.createElement('div');
-            addBtn.className = 'color-add-btn';
-            addBtn.innerHTML = '+';
-            addBtn.title = 'Добавить новый цвет';
-
-            addBtn.onclick = (e) => {
-                e.stopPropagation();
-                const popover = document.getElementById('newColorPopover');
-                const isActive = popover && popover.classList.contains('active');
-                closeNewColorPopover();
-                if (!isActive) addNewColor();
-            };
-
-            addWrapper.appendChild(addBtn);
-
-            const newColorPopover = document.createElement('div');
-            newColorPopover.id = 'newColorPopover';
-            newColorPopover.className = 'new-color-popover';
-            newColorPopover.onclick = (e) => e.stopPropagation();
-
-            newColorPopover.innerHTML = `
-                <div class="new-color-title">Новый цвет</div>
-                <div class="new-color-picker-row">
-                    <input type="color" id="newColorPicker" class="new-color-picker" value="#ff9500" aria-label="Выберите цвет">
-                    <div id="newColorPreview" class="new-color-preview" style="background:#ff9500"></div>
-                    <div class="new-color-hint">Выберите любой цвет<br>без ввода HEX-кода</div>
-                </div>
-                <div id="newColorError" class="new-color-error"></div>
-                <div class="new-color-actions">
-                    <button class="new-color-cancel" onclick="closeNewColorPopover()">Отмена</button>
-                    <button class="new-color-save" onclick="saveNewColor()">Добавить</button>
-                </div>
-            `;
-
-            addWrapper.appendChild(newColorPopover);
-            paletteContainer.appendChild(addWrapper);
-
-            const picker = newColorPopover.querySelector('#newColorPicker');
-            const preview = newColorPopover.querySelector('#newColorPreview');
-            picker.addEventListener('input', () => {
-                preview.style.backgroundColor = picker.value;
-                const error = newColorPopover.querySelector('#newColorError');
-                if (error) error.style.display = 'none';
-            });
-
-            picker.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') saveNewColor();
-                if (e.key === 'Escape') closeNewColorPopover();
             });
         }
 
