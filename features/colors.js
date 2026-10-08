@@ -75,6 +75,11 @@
                             popover.classList.add('active');
                             activePopoverCol = col;
 
+                            // Позиционируем popover относительно кнопки
+                            const rect = btn.getBoundingClientRect();
+                            popover.style.top = (rect.bottom + 8) + 'px';
+                            popover.style.left = rect.left + 'px';
+
                             const inputField = popover.querySelector('input');
                             inputField.value = currentCal.legends[col] || '';
                             inputField.focus();
@@ -178,6 +183,12 @@
                 const colorPopover = document.createElement('div');
                 colorPopover.className = 'color-popover active';
                 colorPopover.onclick = (e) => e.stopPropagation();
+
+                // Позиционируем popover относительно кнопки добавления
+                const rect = addBtn.getBoundingClientRect();
+                colorPopover.style.position = 'fixed';
+                colorPopover.style.top = (rect.bottom + 8) + 'px';
+                colorPopover.style.left = rect.left + 'px';
 
                 const remainingColors = availableColors.filter(item => !currentCal.colors.includes(item.value));
                 if (remainingColors.length === 0) {

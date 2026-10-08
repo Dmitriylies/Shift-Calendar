@@ -48,6 +48,12 @@
             if (!isActive) {
                 popover.classList.add('active');
 
+                // Позиционируем popover относительно кнопки
+                const btn = e.target.closest('.tab-add-btn') || e.target;
+                const rect = btn.getBoundingClientRect();
+                popover.style.top = (rect.bottom + 8) + 'px';
+                popover.style.left = rect.left + 'px';
+
                 const input = document.getElementById('newCalNameInput');
                 input.value = '';
                 input.focus();
@@ -212,3 +218,7 @@
             modal.classList.remove('active');
             confirmCallback = null;
         }
+
+        // Сделать функции глобальными
+        window.showConfirmModal = showConfirmModal;
+        window.closeConfirmModal = closeConfirmModal;

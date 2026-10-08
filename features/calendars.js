@@ -108,6 +108,15 @@
             popover.style.zIndex = '999';
             popover.onclick = (e) => e.stopPropagation();
 
+            // Позиционируем popover относительно таба
+            const tab = wrapper.querySelector('.tab');
+            if (tab) {
+                const rect = tab.getBoundingClientRect();
+                popover.style.position = 'fixed';
+                popover.style.top = (rect.bottom + 8) + 'px';
+                popover.style.left = rect.left + 'px';
+            }
+
             const input = document.createElement('input');
             input.type = 'text';
             input.value = name;
