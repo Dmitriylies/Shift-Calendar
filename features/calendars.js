@@ -105,6 +105,7 @@
 
             const popover = document.createElement('div');
             popover.className = 'calendar-popover active';
+            popover.style.zIndex = '999';
             popover.onclick = (e) => e.stopPropagation();
 
             const input = document.createElement('input');

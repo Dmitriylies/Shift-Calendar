@@ -113,22 +113,22 @@
                     delBtn.className = 'popover-delete';
                     delBtn.innerText = 'Удалить';
 
-                    delBtn.onclick = async () => {
-                        if (!confirm('Удалить этот цвет?')) return;
+                    delBtn.onclick = () => {
+                        showConfirmModal('Удалить этот цвет?', async () => {
+                            currentCal.colors = currentCal.colors.filter(c => c !== col);
+                            delete currentCal.legends[col];
 
-                        currentCal.colors = currentCal.colors.filter(c => c !== col);
-                        delete currentCal.legends[col];
-
-                        for (const dKey in currentCal.days) {
-                            if (currentCal.days[dKey] === col) {
-                                delete currentCal.days[dKey];
+                            for (const dKey in currentCal.days) {
+                                if (currentCal.days[dKey] === col) {
+                                    delete currentCal.days[dKey];
+                                }
                             }
-                        }
 
-                        currentColor = currentCal.colors[0] || '#34c759';
+                            currentColor = currentCal.colors[0] || '#34c759';
 
-                        closeAllPopovers();
-                        await saveAndRefresh();
+                            closeAllPopovers();
+                            await saveAndRefresh();
+                        });
                     };
 
                     actionsRow.appendChild(delBtn);

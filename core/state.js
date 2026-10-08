@@ -165,3 +165,50 @@
             await saveData();
             await initApp();
         }
+
+        // ============================
+        // Модальное окно подтверждения
+        // ============================
+        let confirmCallback = null;
+
+        function showConfirmModal(message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            const text = document.getElementById('confirmModalText');
+            const okBtn = document.getElementById('confirmModalOk');
+            const cancelBtn = document.getElementById('confirmModalCancel');
+
+            text.innerText = message;
+            confirmCallback = onConfirm;
+
+            modal.classList.add('active');
+
+            const handleConfirm = () => {
+                modal.classList.remove('active');
+                closeConfirmModal();
+                if (confirmCallback) confirmCallback();
+            };
+
+            const handleCancel = () => {
+                modal.classList.remove('active');
+                closeConfirmModal();
+            };
+
+            okBtn.onclick = handleConfirm;
+            cancelBtn.onclick = handleCancel;
+
+            // Закрытие по Escape
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('active');
+            confirmCallback = null;
+        }
