@@ -131,6 +131,10 @@
             border-color: var(--border-color);
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
+        .calendar-tab-wrapper, .color-add-wrapper {
+            position: relative;
+            display: inline-block;
+        }
 
         /* Добавление календаря */
         .tab-add-wrapper {
@@ -374,6 +378,28 @@
             border-color: var(--text-main);
             color: var(--text-main);
             background: var(--btn-hover);
+        }
+
+        .color-choice-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .color-choice-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+        }
+        .color-choice-btn:hover {
+            border-color: var(--text-main);
+            transform: scale(1.08);
+        }
+        .popover-message {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.35;
         }
 
         .legend-items {
@@ -669,12 +695,20 @@
             '#8e8e93': 'Серый',
             'star': 'Важное'
         };
+        const availableColors = [
+            { value: '#34c759', name: 'Зеленый' },
+            { value: '#007aff', name: 'Синий' },
+            { value: '#8e8e93', name: 'Серый' },
+            { value: '#ff3b30', name: 'Красный' },
+            { value: '#ff2d55', name: 'Розовый' }
+        ];
 
         let appData = {};
         let currentCalName = '';
         let currentColor = '#34c759';
         let currentTheme = localStorage.getItem('apple_overlay_theme') || 'light';
         let activePopoverCol = null;
+        let isColorAddPopoverOpen = false;
         let saveTimeout = null;
 
         document.body.setAttribute('data-theme', currentTheme);
@@ -837,6 +871,11 @@
         function closeAllPopovers() {
             document.querySelectorAll('.color-popover').forEach(p => p.classList.remove('active'));
             activePopoverCol = null;
+            isColorAddPopoverOpen = false;
+        }
+
+        function closeCalendarSettingsPopovers() {
+            document.querySelectorAll('.calendar-tab-wrapper .calendar-popover').forEach(p => p.remove());
         }
 
         function closeCalendarPopover() {
@@ -872,8 +911,9 @@
         }
 
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.color-wrapper')) closeAllPopovers();
+            if (!e.target.closest('.color-wrapper') && !e.target.closest('.color-add-wrapper')) closeAllPopovers();
             if (!e.target.closest('.tab-add-wrapper')) closeCalendarPopover();
+            if (!e.target.closest('.calendar-tab-wrapper')) closeCalendarSettingsPopovers();
         });
 
         // ============================
@@ -983,16 +1023,25 @@
             container.innerHTML = '';
 
             Object.keys(appData).forEach(name => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'calendar-tab-wrapper';
+
                 const tab = document.createElement('div');
                 tab.className = `tab ${name === currentCalName ? 'active' : ''}`;
                 tab.innerText = name;
                 tab.title = name;
 
-                tab.onclick = () => {
-                    switchCalendar(name);
+                tab.onclick = (e) => {
+                    e.stopPropagation();
+                    if (name === currentCalName) {
+                        toggleCalendarSettingsPopover(wrapper, name);
+                    } else {
+                        switchCalendar(name);
+                    }
                 };
 
-                container.appendChild(tab);
+                wrapper.appendChild(tab);
+                container.appendChild(wrapper);
             });
         }
 
@@ -1056,7 +1105,96 @@
 
             closeAllPopovers();
             closeCalendarPopover();
+            closeCalendarSettingsPopovers();
 
+            renderTabs();
+            renderPalette();
+            renderLegend();
+            renderYear();
+        }
+
+        function toggleCalendarSettingsPopover(wrapper, name) {
+            const existing = wrapper.querySelector('.calendar-popover');
+            const wasOpen = existing && existing.classList.contains('active');
+            document.querySelectorAll('.calendar-tab-wrapper .calendar-popover').forEach(p => p.remove());
+            closeAllPopovers();
+            closeCalendarPopover();
+            if (wasOpen) return;
+
+            const popover = document.createElement('div');
+            popover.className = 'calendar-popover active';
+            popover.onclick = (e) => e.stopPropagation();
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = name;
+            input.placeholder = 'Название...';
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') renameCalendar(name, input.value);
+            };
+
+            const actions = document.createElement('div');
+            actions.className = 'popover-actions';
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'popover-delete';
+            deleteBtn.innerText = 'Удалить';
+            deleteBtn.disabled = Object.keys(appData).length <= 1;
+            deleteBtn.title = deleteBtn.disabled ? 'Нельзя удалить последний календарь' : '';
+            deleteBtn.onclick = () => deleteCalendar(name);
+
+            const okBtn = document.createElement('button');
+            okBtn.className = 'popover-ok';
+            okBtn.innerText = 'OK';
+            okBtn.onclick = () => renameCalendar(name, input.value);
+
+            actions.append(deleteBtn, okBtn);
+            popover.append(input, actions);
+            wrapper.appendChild(popover);
+            input.focus();
+            input.select();
+        }
+
+        async function renameCalendar(oldName, value) {
+            const newName = value.trim();
+            if (!newName || newName === oldName) {
+                renderTabs();
+                return;
+            }
+            if (appData[newName]) return;
+
+            const { error } = await supabaseClient
+                .from('calendars')
+                .update({ name: newName, updated_at: new Date().toISOString() })
+                .eq('name', oldName);
+            if (error) {
+                console.error('Ошибка переименования календаря:', error);
+                return;
+            }
+
+            appData[newName] = appData[oldName];
+            delete appData[oldName];
+            currentCalName = newName;
+            renderTabs();
+        }
+
+        async function deleteCalendar(name) {
+            if (Object.keys(appData).length <= 1) return;
+
+            const nextName = Object.keys(appData).find(calName => calName !== name);
+            const { error } = await supabaseClient
+                .from('calendars')
+                .delete()
+                .eq('name', name);
+            if (error) {
+                console.error('Ошибка удаления календаря:', error);
+                return;
+            }
+
+            delete appData[name];
+            if (currentCalName === name) {
+                currentCalName = nextName;
+                currentColor = appData[nextName].colors[0] || '#34c759';
+            }
             renderTabs();
             renderPalette();
             renderLegend();
@@ -1073,36 +1211,21 @@
         // ============================
         // Цвета
         // ============================
-        function addNewColor() {
-            const colorInput = prompt(
-                "Введите HEX-код цвета (например, #ff9500 или #af52de):",
-                "#ff9500"
-            );
-
-            if (!colorInput) return;
-
-            const hex = colorInput.trim();
+        function addNewColor(color) {
             const currentCal = appData[currentCalName];
+            const colorDefinition = availableColors.find(item => item.value === color);
+            if (!currentCal || !colorDefinition || currentCal.colors.includes(color)) return;
 
-            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-                alert('Введите корректный HEX-код, например #ff9500');
-                return;
+            const starIdx = currentCal.colors.indexOf('star');
+            if (starIdx !== -1) {
+                currentCal.colors.splice(starIdx, 0, color);
+            } else {
+                currentCal.colors.push(color);
             }
-
-            if (!currentCal.colors.includes(hex)) {
-                const starIdx = currentCal.colors.indexOf('star');
-
-                if (starIdx !== -1) {
-                    currentCal.colors.splice(starIdx, 0, hex);
-                } else {
-                    currentCal.colors.push(hex);
-                }
-
-                currentCal.legends[hex] = 'Новый';
-                currentColor = hex;
-
-                saveAndRefresh();
-            }
+            currentCal.legends[color] = colorDefinition.name;
+            currentColor = color;
+            closeAllPopovers();
+            saveAndRefresh();
         }
 
         function getColorCount(currentCal, col) {
@@ -1238,6 +1361,9 @@
                 paletteContainer.appendChild(wrapper);
             });
 
+            const addWrapper = document.createElement('div');
+            addWrapper.className = 'color-add-wrapper';
+
             const addBtn = document.createElement('div');
             addBtn.className = 'color-add-btn';
             addBtn.innerHTML = '+';
@@ -1246,10 +1372,47 @@
             addBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeCalendarPopover();
-                addNewColor();
+                const wasOpen = isColorAddPopoverOpen;
+                closeAllPopovers();
+                if (wasOpen) {
+                    renderPalette();
+                    return;
+                }
+                isColorAddPopoverOpen = true;
+                renderPalette();
             };
 
-            paletteContainer.appendChild(addBtn);
+            addWrapper.appendChild(addBtn);
+
+            if (isColorAddPopoverOpen) {
+                const colorPopover = document.createElement('div');
+                colorPopover.className = 'color-popover active';
+                colorPopover.onclick = (e) => e.stopPropagation();
+
+                const remainingColors = availableColors.filter(item => !currentCal.colors.includes(item.value));
+                if (remainingColors.length === 0) {
+                    const message = document.createElement('div');
+                    message.className = 'popover-message';
+                    message.innerText = 'Все пять доступных цветов уже добавлены.';
+                    colorPopover.appendChild(message);
+                } else {
+                    const choices = document.createElement('div');
+                    choices.className = 'color-choice-list';
+                    remainingColors.forEach(item => {
+                        const choice = document.createElement('button');
+                        choice.className = 'color-choice-btn';
+                        choice.style.backgroundColor = item.value;
+                        choice.title = item.name;
+                        choice.setAttribute('aria-label', item.name);
+                        choice.onclick = () => addNewColor(item.value);
+                        choices.appendChild(choice);
+                    });
+                    colorPopover.appendChild(choices);
+                }
+                addWrapper.appendChild(colorPopover);
+            }
+
+            paletteContainer.appendChild(addWrapper);
         }
 
         function savePopoverValue(col, value) {
